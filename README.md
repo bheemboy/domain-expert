@@ -98,7 +98,7 @@ You normally run just these two commands:
 | Command | Effect |
 |---|---|
 | `/wiki-ingest` | Detects new Jira and repo changes when the queue is empty, then ingests them (extract, then synthesize) |
-| `/wiki-ingest N` | Ingests up to N items per phase, for working through a large backlog in chunks |
+| `/wiki-ingest N` | Same as `/wiki-ingest` (including the detect-when-empty step), but caps each phase at N items, for working through a large backlog in chunks |
 | `/wiki-lint` | Runs a full health-check (mechanical and semantic) |
 
 These commands report state and change nothing:
