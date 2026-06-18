@@ -11,16 +11,11 @@ while the scripts and skills travel with the plugin.
 
 ## Skills
 
-The plugin provides four skills, split across the pipeline's two layers: detection
-(`wiki-queue` finds and queues work) and draining (`wiki-ingest` turns queued work into
-wiki pages).
-
-| Skill | What it does |
-|---|---|
-| `/wiki-init` | Bootstraps a new wiki repo, or upgrades an existing repo's schema after a plugin update |
-| `/wiki-queue` | Detects new or changed sources and enqueues them, or inspects the queue; never drains |
-| `/wiki-ingest` | Drains the queue into the wiki (extract, then synthesize) |
-| `/wiki-lint` | Health-checks the wiki (mechanical and semantic) |
+The plugin provides four skills, split across the pipeline's two layers. `/wiki-queue`
+detects new or changed sources and queues them; `/wiki-ingest` drains that queue into wiki
+pages (extract, then synthesize). `/wiki-init` scaffolds or upgrades a wiki repo, and
+`/wiki-lint` health-checks the result. The [Command reference](#command-reference) lists
+every command and argument form.
 
 ## Install
 
@@ -89,37 +84,26 @@ or rename terms), then scaffolds:
 Then complete the per-machine prerequisites above and prime your sources (see
 [First-time priming](#first-time-priming)).
 
-## Usage
+## Command reference
 
 Every task is driven by a slash command; there are no direct `python scripts/…` calls.
+Commands are grouped by skill.
 
-You normally run just these two commands:
-
-| Command | Effect |
+| Command | What it does, and when to use it |
 |---|---|
-| `/wiki-ingest` | Detects new Jira and repo changes when the queue is empty, then ingests them (extract, then synthesize) |
-| `/wiki-ingest N` | Same as `/wiki-ingest` (including the detect-when-empty step), but caps each phase at N items, for working through a large backlog in chunks |
-| `/wiki-lint` | Runs a full health-check (mechanical and semantic) |
-
-These commands report state and change nothing:
-
-| Command | Effect |
-|---|---|
-| `/wiki-queue status` | Shows pending queue counts |
-| `/wiki-lint mechanical` | Runs the fast deterministic checks only (no LLM) |
-
-Use these for special, first-time, or custom scenarios:
-
-| Command | When to use it |
-|---|---|
-| `/wiki-queue` | Force a full detection pass (Jira and repos) without draining, when you know new work landed and don't want to wait for the queue to empty |
-| `/wiki-queue jira` | Detect Jira changes only, including the first-time backlog |
-| `/wiki-queue code` | Detect external-repo changes only |
-| `/wiki-queue backfill <repo>` | Load a repo's existing tracked files the first time |
-| `/wiki-queue <path\|folder>` | Enqueue a `raw/` drop or ad-hoc paths without draining |
-| `/wiki-queue --dry-run` | Preview detection without pulling, queueing, or writing state |
-| `/wiki-ingest <path\|folder>` | Enqueue a `raw/` drop and ingest it in one step |
-| `/wiki-init` | Bootstrap a new wiki repo, or upgrade `CLAUDE.md` to the current plugin schema (preserves §0) |
+| `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki for a new product, and again after a plugin update to refresh the schema (your §0 is preserved). |
+| `/wiki-ingest` | Detects new Jira and repo changes when the queue is empty, then ingests everything pending (extract, then synthesize). The default day-to-day command: run it to bring the wiki up to date. |
+| `/wiki-ingest N` | Same as `/wiki-ingest`, including the detect-when-empty step, but caps each phase at N items. Use it to work through a large backlog in controlled chunks (for example, `/wiki-ingest 30` repeatedly) instead of one long run. |
+| `/wiki-ingest <path\|folder>` | Enqueues the given `raw/` path (folders expand recursively) and ingests it in one step, skipping detection. Use it to pull in a specific document or folder you just dropped into `raw/`. |
+| `/wiki-lint` | Runs the full health-check: deterministic checks plus a semantic review (stale, contradictory, or unsuperseded claims). Run it periodically, and before relying on the wiki for answers. |
+| `/wiki-lint mechanical` | Runs only the fast deterministic checks (no LLM): broken `[[wikilinks]]`, orphan pages, duplicate slugs, index drift, and frontmatter gaps. Use it for a quick structural check or in a pre-commit or CI step. |
+| `/wiki-queue` | Forces a full detection pass (Jira and repos) and enqueues what changed, without draining. Use it when you know new work landed and want it queued now, rather than waiting for `/wiki-ingest` to detect on an empty queue. |
+| `/wiki-queue jira` | Detects Jira changes only and enqueues them, including the first-time backlog when no cursor exists yet. Use it to prime or refresh Jira without touching repos. |
+| `/wiki-queue code` | Detects external-repo changes only (the commits a `git pull` brings in) and enqueues them. Use it to pick up source-code changes without a Jira pass. |
+| `/wiki-queue <path\|folder>` | Enqueues a `raw/` drop or ad-hoc paths (folders expand recursively) without draining. Use it to stage several drops before a single `/wiki-ingest`. |
+| `/wiki-queue backfill <repo>` | Enqueues every tracked file in a configured repo. Use it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
+| `/wiki-queue --dry-run` | Previews what detection would enqueue, fetching but not pulling, queueing, or writing state. Use it to preview a detection pass before committing to it. |
+| `/wiki-queue status` | Shows pending extract and synth counts per source. Use it to check what's queued before or after a run. |
 
 Detection is incremental and idempotent; running it with nothing new is a no-op.
 
