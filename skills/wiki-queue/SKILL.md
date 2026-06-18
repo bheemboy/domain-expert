@@ -10,7 +10,9 @@ that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md
 
 ## Argument forms
 
-- `/wiki-queue` — full detection pass (Jira + external repos), enqueue what changed.
+- `/wiki-queue` — inspect pending counts only, no detection:
+  `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status`.
+- `/wiki-queue all` — full detection pass (Jira + external repos), enqueue what changed.
   Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py"`, then print status.
 - `/wiki-queue jira` — Jira-only detection (incl. first-time backlog when no cursor):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --jira`.
@@ -22,8 +24,6 @@ that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md
 - `/wiki-queue <path|folder> …` — enqueue a raw/ drop or ad-hoc paths WITHOUT draining
   (folders expand recursively):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`.
-- `/wiki-queue status` — inspect pending counts only, no detection:
-  `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status`.
 - `/wiki-queue --dry-run` — preview detection (fetch, no pull/queue/state writes):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --dry-run`.
 
