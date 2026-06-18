@@ -102,8 +102,11 @@ Because detection is incremental, a brand-new source needs a one-time prime:
 | Source | Prime with |
 |---|---|
 | Jira backlog | `/wiki-queue jira` |
-| A source repo's existing files | `/wiki-queue backfill <repo>` |
+| A source repo's existing files | `/wiki-queue backfill <repo> …` |
 | A document or file drop in `raw/` | `/wiki-queue raw/<path>` (enqueue only), or `/wiki-ingest raw/<path>` (enqueue and ingest into the wiki) |
+
+With several source repos, prime them in one call (`/wiki-queue backfill <repo1> <repo2>
+…`) or one repo at a time; the order does not matter, since you ingest once at the end.
 
 After priming, run `/wiki-ingest` to process the queue. Plain `/wiki-ingest` keeps
 everything current from then on.
