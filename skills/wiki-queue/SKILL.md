@@ -14,7 +14,7 @@ that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md
   Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py"`, then print status.
 - `/wiki-queue jira` — Jira-only detection (incl. first-time backlog when no cursor):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --jira`.
-- `/wiki-queue code` — external-repo-only detection:
+- `/wiki-queue repos` — external-repo-only detection:
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --code`.
 - `/wiki-queue backfill <repo> …` — first-time load of an existing repo's tracked
   files (detection is incremental and would otherwise enqueue nothing):
