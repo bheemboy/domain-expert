@@ -9,6 +9,32 @@ repo, one per product. A wiki repo keeps its own `wiki/`, `raw/`, and `wiki.conf
 while the scripts and skills travel with the plugin. You install the plugin once per
 machine, then create or adopt a wiki repo for each product.
 
+## How it works
+
+A few terms describe the model:
+
+- **Sources**. `jira`, `raw` (the wiki repo's own `raw/` drop folder), and each external
+  git repo listed in `wiki.config.yaml` `sources`.
+- **Identity**. One unit of work: a Jira key, or an absolute file path.
+- **Queues**. Per-source `extract` and `synth` files under `<config_dir>/state/`
+  (machine-local). An identity lives in exactly one file at a time, and its location is its
+  state.
+- **Repo discovery**. The scripts find the wiki repo by walking up from the working
+  directory to the nearest `wiki.config.yaml` (override with `$WIKI_CONFIG`), so the same
+  installed plugin serves any wiki repo you `cd` into.
+- **Schema**. `CLAUDE.md` §1–§8 is generic and plugin-managed (regenerate via
+  `/wiki-init`); only §0, the product identity, is hand-edited per repo.
+
+A wiki repo that uses the plugin has this shape:
+
+```
+<your-wiki-repo>/
+  CLAUDE.md          # schema: §0 product identity (yours), §1+ generic (plugin-managed)
+  wiki.config.yaml   # Jira base_url/jql, sources, config_dir, lint terms
+  wiki/              # the wiki: index/log/overview + entities/concepts/processes/rules/terminology
+  raw/               # raw source material you drop in, plus raw/imports/ (extract output)
+```
+
 ## Installation
 
 Install the plugin once per machine.
@@ -103,39 +129,3 @@ With several source repos, prime them in one call (`/wiki-queue backfill <repo1>
 
 After priming, run `/wiki-ingest` to process the queue. Plain `/wiki-ingest` keeps
 everything current from then on.
-
-## How it works
-
-A few terms describe the model:
-
-- **Sources**. `jira`, `raw` (the wiki repo's own `raw/` drop folder), and each external
-  git repo listed in `wiki.config.yaml` `sources`.
-- **Identity**. One unit of work: a Jira key, or an absolute file path.
-- **Queues**. Per-source `extract` and `synth` files under `<config_dir>/state/`
-  (machine-local). An identity lives in exactly one file at a time, and its location is its
-  state.
-- **Repo discovery**. The scripts find the wiki repo by walking up from the working
-  directory to the nearest `wiki.config.yaml` (override with `$WIKI_CONFIG`), so the same
-  installed plugin serves any wiki repo you `cd` into.
-- **Schema**. `CLAUDE.md` §1–§8 is generic and plugin-managed (regenerate via
-  `/wiki-init`); only §0, the product identity, is hand-edited per repo.
-
-## A consumer repo's layout
-
-A wiki repo that uses the plugin has this shape:
-
-```
-<your-wiki-repo>/
-  CLAUDE.md          # schema: §0 product identity (yours), §1+ generic (plugin-managed)
-  wiki.config.yaml   # Jira base_url/jql, sources, config_dir, lint terms
-  wiki/              # the wiki: index/log/overview + entities/concepts/processes/rules/terminology
-  raw/               # raw source material you drop in, plus raw/imports/ (extract output)
-```
-
-## Development
-
-The Python package and its tests live in this repo. Run the suite from the plugin repo root:
-
-```
-python -m pytest
-```
