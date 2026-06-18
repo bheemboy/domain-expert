@@ -1,6 +1,6 @@
 ---
 name: wiki-lint
-description: Health-check the wiki — mechanical (deterministic script) plus semantic (Opus) checks. Run standalone any time, or invoked automatically by the /ingest synth lint gate.
+description: Health-check the wiki — mechanical (deterministic script) plus semantic (Opus) checks. Run standalone any time, or invoked automatically by the /wiki-ingest synth lint gate.
 ---
 
 # Lint the Wiki
