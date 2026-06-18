@@ -13,10 +13,21 @@ no config → **bootstrap**; config present → **upgrade**.
 1. **Interview** the human for §0 identity, one question at a time:
    product/display name, internal name, Jira project key, config_dir (suggest
    `~/.config/<slug>-wiki`), Jira base_url, Jira JQL (offer the default
-   `project = <KEY> AND statusCategory = Done ORDER BY resolved ASC`), source repo
-   paths, what counts as business-relevant, domain seed acronyms, brand/rename terms.
+   `project = <KEY> AND statusCategory = Done ORDER BY resolved ASC`; the answer fills
+   `{{JIRA_JQL}}` — if the user accepts the default, substitute the literal string
+   `project = <JIRA_KEY> AND statusCategory = Done ORDER BY resolved ASC` with the
+   real key in place of `<JIRA_KEY>`), source repo paths, what counts as
+   business-relevant, domain seed acronyms, brand/rename terms.
 2. **Scaffold** by copying templates from this skill's `templates/` and the schema
-   from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl`, substituting `{{PLACEHOLDERS}}`:
+   from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl`, substituting `{{PLACEHOLDERS}}`.
+   The same interview answers render in two surface forms depending on the target file:
+   - Brand/rename terms: `{{BRAND_TERMS}}` is the inline prose form (comma-separated
+     phrase, used in `CLAUDE.md` §0); `{{BRAND_TERMS_YAML_LIST}}` is the YAML-array
+     form (e.g. `[ASV, CA, QualA]`, used in `wiki.config.yaml`).
+   - Source repo paths: `{{SOURCE_REPOS_YAML_LIST}}` is a YAML list of the repo paths
+     (e.g. `["~/projects/work/asv"]`); if none, `[]`.
+   Render each placeholder in the format its surrounding file requires at substitution time.
+   Files scaffolded:
    - `wiki/` tree (index.md, overview.md, log.md, and the five category dirs).
    - `wiki.config.yaml` from `templates/wiki.config.yaml.tmpl`.
    - `CLAUDE.md` from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl`.
@@ -31,7 +42,7 @@ no config → **bootstrap**; config present → **upgrade**.
 
 ## Upgrade (existing repo)
 
-1. Read the repo's current `CLAUDE.md`; extract its `## 0. Project identity` block.
+1. Read the repo's current `CLAUDE.md`; extract its `## 0. Project identity` block — that is, everything from the `## 0. Project identity` heading up to (but not including) the `## 1. Raw → wiki` heading.
 2. Render `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl` but **replace its §0 with the
    repo's existing §0 verbatim**.
 3. Show a diff of the generic body (§1+) and ask for confirmation before writing.

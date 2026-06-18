@@ -6,7 +6,7 @@ project:
 jira:
   base_url: {{JIRA_BASE_URL}}
   jql: |
-    project = {{JIRA_KEY}} AND statusCategory = Done ORDER BY resolved ASC
+    {{JIRA_JQL}}
 
 sources: {{SOURCE_REPOS_YAML_LIST}}
 
