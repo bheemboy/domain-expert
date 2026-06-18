@@ -40,7 +40,8 @@ skip step 1 and do steps 2 and 3 for your checkout.
    - `wiki/` seed tree (`index.md`, `log.md`, `overview.md`, and the `entities/`,
      `concepts/`, `processes/`, `rules/`, and `terminology/` directories)
    - `wiki.config.yaml` (project identity for the tooling)
-   - `CLAUDE.md` (the schema: §0 your product identity, §1+ the generic body)
+   - `CLAUDE.md` (the wiki's schema: a product-identity section filled from your interview
+     answers, plus a generic body the plugin manages)
    - `.gitignore`
 2. Create the Jira credentials file at the `config_dir` you set in step 1
    (`<config_dir>/jira.token`, mode 600):
