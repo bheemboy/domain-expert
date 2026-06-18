@@ -13,11 +13,14 @@ no config → **bootstrap**; config present → **upgrade**.
 1. **Interview** the human for §0 identity, one question at a time:
    product/display name, internal name, Jira project key, config_dir (suggest
    `~/.config/<slug>-wiki`), Jira base_url, Jira JQL (offer the default
-   `project = <KEY> AND statusCategory = Done ORDER BY resolved ASC`; the answer fills
+   `project = <JIRA_KEY> AND statusCategory = Done`; the answer fills
    `{{JIRA_JQL}}` — if the user accepts the default, substitute the literal string
-   `project = <JIRA_KEY> AND statusCategory = Done ORDER BY resolved ASC` with the
-   real key in place of `<JIRA_KEY>`), source repo paths, what counts as
-   business-relevant, domain seed acronyms, brand/rename terms.
+   `project = <JIRA_KEY> AND statusCategory = Done` with the real key in place of
+   `<JIRA_KEY>`; **do NOT include `ORDER BY` in the configured JQL** — detection
+   (`build_jql` in `check_for_changes.py`) appends ` ORDER BY Updated ASC`
+   automatically, so a user-supplied `ORDER BY` would produce malformed double-ORDER-BY
+   JQL), source repo paths, what counts as business-relevant, domain seed acronyms,
+   brand/rename terms.
 2. **Scaffold** by copying templates from this skill's `templates/` and the schema
    from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl`, substituting `{{PLACEHOLDERS}}`.
    The same interview answers render in two surface forms depending on the target file:

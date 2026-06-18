@@ -1,4 +1,11 @@
+import subprocess
+import sys
+import os
+from pathlib import Path
+
 import ingest_state
+
+REPO = Path(__file__).resolve().parent.parent
 
 
 def test_classify_jira(tmp_path, monkeypatch):
@@ -31,12 +38,11 @@ def test_classify_code_reads_file_directly(tmp_path, monkeypatch):
 
 def test_classify_cli(tmp_path, monkeypatch, capsys):
     # CLI prints "<kind>\t<read_target>" (tab-separated) for one path.
-    import subprocess, sys, os
     env = dict(os.environ, IMPORTS_DIR=str(tmp_path))
     out = subprocess.run(
         [sys.executable, "scripts/ingest_state.py", "classify", "src/main.py"],
         capture_output=True, text=True, env=env,
-        cwd="/home/surehman/projects/personal/ts-wiki",
+        cwd=REPO,
     )
     assert out.returncode == 0
     assert out.stdout.strip() == "code\tsrc/main.py"
