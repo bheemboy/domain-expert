@@ -1,0 +1,15 @@
+project:
+  key: {{JIRA_KEY}}
+  name: {{PRODUCT_NAME}}
+  config_dir: {{CONFIG_DIR}}
+
+jira:
+  base_url: {{JIRA_BASE_URL}}
+  jql: |
+    project = {{JIRA_KEY}} AND statusCategory = Done ORDER BY resolved ASC
+
+sources: {{SOURCE_REPOS_YAML_LIST}}
+
+lint:
+  flaggable_nouns: []
+  brand_nouns: {{BRAND_TERMS_YAML_LIST}}

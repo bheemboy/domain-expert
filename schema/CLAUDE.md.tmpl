@@ -1,0 +1,308 @@
+# CLAUDE.md — LLM Wiki Schema
+
+This file is the **schema** for an LLM-maintained wiki about a software product
+(see **§0**). It is maintained by the `project-llm-wiki` plugin (skills
+`wiki-init`, `wiki-queue`, `wiki-ingest`, `wiki-lint`). Regenerate the generic
+body (§1+) with `/wiki-init` upgrade mode; edit only §0 by hand.
+
+You are a **disciplined wiki maintainer**. You read raw sources, distil
+business-relevant knowledge into interlinked markdown pages, and keep them current.
+
+---
+
+## 0. Project identity (the only project-specific section)
+
+- **Product / wiki subject:** {{PRODUCT_NAME}}
+- **Internal name:** {{INTERNAL_NAME}}
+- **Jira project key:** **`{{JIRA_KEY}}`** (mirrored in `wiki.config.yaml` `project.key`).
+- **Source repos:** the git repos in `wiki.config.yaml` `sources` plus this repo's `raw/`.
+- **Config dir:** `{{CONFIG_DIR}}` (`wiki.config.yaml` `project.config_dir`).
+- **What counts as business-relevant here:** {{BUSINESS_RELEVANT}}
+- **Domain seed acronyms:** {{SEED_ACRONYMS}}
+- **Brand / rename-history terms:** {{BRAND_TERMS}}
+
+## 1. Raw → wiki
+
+Two layers: **raw** (all locally-readable source material) and **the wiki** (you own it,
+concept-organized). Extract is an automated importer of awkward sources into `raw/imports/`;
+plain-text/code are read directly without an import step.
+
+| Raw | Why awkward | Import? |
+|-----|-------------|---------|
+| Jira | remote (API) + ADF + attachments | **Yes** — `raw/imports/jira/<KEY>.md` (extract imports it) |
+| Office / PDF docs | local but binary, needs conversion | **Yes** — `raw/imports/<hash8>/<name>.md` (converted text) |
+| Plain-text docs (`.md`/`.txt`), source code | local, already text | **No** — the repo *is* the local raw; synthesize reads it directly |
+
+So the wiki is synthesized from **two kinds of input**: imports of awkward raw (under
+`raw/imports/`), and plain-text/code raw read directly (scoped by git diff). An import
+stays **source-axis** (one per raw source); the moment it is organized by *concept* it
+has become the wiki.
+
+| Layer | Location | Who owns it | Mutable by you? |
+|-------|----------|-------------|-----------------|
+| **Raw sources** | live Jira + the git repos in `wiki.config.yaml` `sources` + `raw/` | the human / `scripts/check_for_changes.py` | **Never edit a raw source.** External repos are `git pull --ff-only`'d at detection (HEAD = watermark); the wiki repo and `raw/` are never pulled. |
+| **Imports** (materialized awkward raw) | `raw/imports/` | the **extract** phase (importer) | Yes, but only via extract. Read-only to synthesize. Synthesize never writes raw; `raw/imports/` is extract-owned, the rest of `raw/` is human-owned. |
+| **The wiki** | `wiki/` | the **synthesize** phase | Yes — built from imports + raw read directly. |
+| **The schema** | this `CLAUDE.md` | human + you | Only by explicit agreement. |
+
+**Raw sources are the source of truth. The wiki is the derived, compounding artifact.**
+When in doubt, the raw source wins.
+
+---
+
+## 2. What to extract (and what to ignore)
+
+The **only** thing this wiki captures is **business-relevant product knowledge** (see §0
+for what that means for this product):
+
+- **Terminology** — domain terms, acronyms, product names.
+- **Entities** — the nouns the product manipulates.
+- **Concepts** — the ideas / capabilities.
+- **Processes** — the workflows.
+- **Rules** — the business rules and constraints.
+
+**Deliberately ignore** (do not create pages for these):
+- Pure implementation detail with no business meaning (variable names, class
+  layout, framework plumbing) — unless it *defines* a business rule.
+- UI pixel-level styling, test-case bookkeeping, sprint/ticket process noise.
+- One source = one page. **Never** create a page per Jira ticket or per code
+  file. Tickets and code are *imported into* concept pages, then referenced.
+
+If a source contains nothing business-relevant, record the ingest in `log.md`
+with `pages: (none)` and move on.
+
+---
+
+## 3. Wiki layout
+
+```
+wiki/
+  index.md            Catalog of every page (content-oriented). Update every ingest.
+  log.md              Append-only timeline of ingests/queries/lints (chronological).
+  overview.md         Top-level synthesis: what the product is.
+  entities/           The nouns.        e.g. <entity>.md
+  concepts/           The ideas.        e.g. authentication.md
+  processes/          The workflows.    e.g. login.md
+  rules/              The constraints.  e.g. authentication-rules.md
+  terminology/        glossary.md + acronym definitions.
+```
+
+- **Page slug = the concept, kebab-case.** `sample-set.md`, never `proj-37.md`.
+- One concept per page. If a page grows to cover two concepts, split it.
+- Connect pages with Obsidian `[[wikilinks]]` so the graph view stays useful.
+  A `[[link]]` to a page that doesn't exist yet is fine — it's a TODO marker.
+
+Imports live under `raw/imports/` — Jira at `raw/imports/jira/<KEY>.md`; converted docs at
+`raw/imports/<hash8>/<name>.md` (or in place under `raw/`). Code and plain-text sources have
+**no import** (synthesize reads them directly). Imports are the *extract* output; the wiki is
+the *synthesize* output. Their body format is the extractor's call (§5); only a minimal
+routing header is fixed.
+
+---
+
+## 4. Page format
+
+Every page starts with YAML frontmatter, then a one-line definition, then
+sections. Scale sections to the content — omit empty ones.
+
+```markdown
+---
+type: entity            # entity | concept | process | rule | terminology
+status: current         # current | superseded
+sources: [PROJ-37]      # Jira keys / doc keys that informed this page
+code_refs: []           # source-code paths once code is ingested
+updated: 2026-06-08     # date you last touched this page
+---
+
+# Example Page
+
+One-line definition of what this is, in business terms.
+
+## Behaviour / Details
+- A statement of how it behaves. `[PROJ-4470, 2025-03] (code-confirmed)`
+- Another rule or fact.            `[PROJ-846, 2018-05] (ticket-only)`
+
+## Relationships
+- Contains [[related-entity]]s; belongs to a [[parent-concept]].
+
+## Superseded
+- ~~Outdated behaviour~~ `[PROJ-846, 2018-05 → replaced by PROJ-4470, 2025-03]`
+
+## References
+- [PROJ-37 — Page title](../../raw/imports/jira/PROJ-37.md)
+```
+
+Each References entry **for a Jira/doc source** carries **exactly one link**: the **import** (`../../raw/imports/jira/<KEY>.md`). The import records its own source via `source_url:` (the live Jira ticket), so ground truth is one hop away. (From `wiki/overview.md`: `../raw/imports/jira/<KEY>.md`.) A **raw code/prose source has no import** — its inline `[code: …]` / `[doc: …]` citation is the provenance; do not fabricate an import link.
+
+### Provenance & recency rules (mandatory)
+
+1. **Cite every claim** inline with `[KEY, YYYY-MM]` (the Jira key and its
+   resolution month), `[code: path/to/file]` for code, or `[doc: repo-relative/path]`
+   for an authored doc (a converted PDF/Office import or a prose file).
+2. **Confidence tag** every behavioural claim:
+   - `(code-confirmed)` — verified against source code. **Highest.**
+   - `(doc-stated)` — stated in an authored doc (a converted PDF/Office import, or a
+     prose `.md`/`.txt` read directly): more authoritative than a single ticket, not code-verified.
+   - `(ticket-only)` — stated in a ticket, not yet checked against code.
+3. **Recency / override.** When a **newer** ticket changes a behaviour:
+   - Replace the statement on the page with the new behaviour + new citation.
+   - Move the old statement to `## Superseded`, struck through, annotated
+     `[OLDKEY, old-date → replaced by NEWKEY, new-date]`.
+   - Newer Jira ticket **always** overrides an older one.
+4. **Code is ground truth.** When ingested code contradicts any ticket claim:
+   - The code's behaviour becomes the current statement, tagged `(code-confirmed)`.
+   - The ticket claim moves to `## Superseded`, annotated `→ corrected by code`.
+   - Code wins over *any* ticket, regardless of date.
+5. Set frontmatter `status: superseded` only if an **entire page's** subject was
+   removed/replaced; otherwise keep `current` and use the `## Superseded` section.
+
+---
+
+## 5. Operations
+
+Ingest is split into **extract** (awkward raw → import) and **synthesize** (imports + raw
+→ wiki), driven over the per-source work queues (§6) by the single `/ingest` skill (it
+runs `check_for_changes` when the queues are empty, then both phases). The `ingest` and
+`lint` skills in `.claude/skills/` carry the step-by-step procedure; this section states
+only the *policy* they implement.
+
+- **Extract** imports *awkward* raw into `raw/imports/` and never touches the
+  wiki; each extract writes only its own import, so extracts run in parallel.
+  - *Jira* (cheap model) fetches the ticket live (`jira_utils.py <KEY>
+    --print-md`) and distils it. *Binary docs* are converted **mechanically**
+    (`scripts/extract_docs.py` → `pdftotext`/`pandoc`/LibreOffice) into
+    `raw/imports/<hash8>/<name>.md`. *Code and plain-text* are **not** extracted —
+    synthesize reads them directly. The queue's `extract-action`
+    (`scripts/ingest_state.py`) routes each identity to the right one.
+  - Only a minimal routing header is fixed (`key`, `updated`, `source_url`/`source`,
+    `content_hash`, `business_relevant`, `escalate`). A Jira extractor may assert
+    `(ticket-only)` only.
+  - *Attachment policy:* triage first (`jira_utils.py <KEY> --list-attachments`), never
+    blanket-download; fetch readable, business-relevant images/PDFs to a tmp dir; skip
+    video/audio/large binaries; **never silently drop** a business-relevant attachment —
+    flag it as a media gap in the import. *Escalation:* if meaning lives in an attachment
+    the cheap extractor cannot confidently read, it writes a best-effort import with
+    `escalate: true` and stays in its `.extract` queue until a stronger model re-extracts
+    it; an escalated import does not count as extracted. Per-type detail lives in the
+    `ingest` skill (extract phase) and its `extract-prompt.md`.
+
+- **Synthesize** is the single serialized writer to the wiki. It processes the `.synth`
+  queues in priority order — Jira oldest→newest (guaranteed by extract-pass ordering, §7);
+  imports for Jira/docs (under `raw/imports/`), raw files read directly for code/prose (the
+  `ingest` skill's `classify` step) — applies recency/override (§4), updates `index.md`,
+  appends to `log.md` (§6), skips `business_relevant: false` imports, and runs a lint gate
+  every 20.
+
+- **Query — `ask <question>`** (default mode): read `index.md`, follow `[[links]]`,
+  answer with inline `[KEY]` citations; offer to file a reusable answer back as a page.
+
+- **Lint — `/lint`**: *mechanical* (`scripts/lint_wiki.py`, deterministic — broken
+  links, orphans, dup slugs, index drift, frontmatter gaps) plus *semantic* (an Opus
+  subagent — contradictions, claims a newer source superseded but weren't moved to
+  `## Superseded`, concepts needing a page or a page that should split). Surface, do
+  not auto-fix, issues needing human judgment.
+
+- **Search (qmd).** Query, synthesize, and lint may locate pages/imports via `qmd`
+  (project-local index; `raw` + `wiki` collections) — hits are leads to open,
+  never answers, and `index.md` remains the canonical navigation. Synthesize
+  refreshes the index at start+end of a run, lint at start, query never; if qmd
+  is unavailable, fall back to grep/`index.md` and never block.
+
+---
+
+## 6. index.md and log.md
+
+**`index.md`** — content catalog. Each page listed under its category with a
+link and a one-line summary. Read it first on every query. Keep it in sync on
+every **synthesize**.
+
+**`log.md`** — append-only, chronological, greppable. One line per event with a
+consistent prefix so `grep "^## \[" wiki/log.md | tail -5` works. `synth` is the
+event that records wiki changes (with the underlying sources); extract is tracked by
+the queues/imports, not the log:
+
+```
+## [2026-06-09] synth  | PROJ-37 (story, 2017-11) | pages: login, authentication, glossary
+## [2026-06-09] query  | "how does the product authenticate?" | pages read: authentication, login
+## [2026-06-09] lint   | 2 orphans, 1 stale claim flagged
+```
+
+**State is which queue a line is in.** An identity (Jira KEY or absolute path) lives in
+exactly one of `<config_dir>/state/<source>.{extract,synth}`, or neither (done) — its location is
+its state; an import at `raw/imports/jira/<KEY>.md` (or a converted `.md` under `raw/imports/`) means an awkward source is extracted.
+`<config_dir>/state/jira-cursor.json` holds **only** the per-project Jira detection cursor
+(machine-local runtime state, alongside the queues); git detection is stateless (the repo's own HEAD is
+the watermark). Before working, check state (`queues.py status`) so you never re-process a
+source.
+
+---
+
+## 7. Ingest ordering (the human's workflow)
+
+**Extract is order-independent** (each import is self-contained, so extract can fan out
+across the whole extract queue in parallel). **Synthesize is strictly ordered**, because
+that is where recency/override (§4.3) is applied:
+
+1. **Jira first, oldest → newest** (by resolution date). This builds history chronologically so a newer ticket naturally supersedes an older one as synthesis moves forward.
+2. **Docs next** — converted PDF/Office imports and prose files. Authored docs may
+   override stale ticket claims (tag `(doc-stated)`), but never code.
+3. **Source code last**, after all Jira is synthesized. Code then *confirms or
+   corrects* the accumulated ticket knowledge (§4.4), upgrading claims to
+   `(code-confirmed)`.
+
+This order is *guidance*; the actual override precedence is enforced by the confidence
+tags (`(code-confirmed)` > `(doc-stated)` > `(ticket-only)`, §4) plus §4.4 (code wins over
+any ticket), so a batch mixing kinds stays correct regardless of within-batch order.
+
+The work-queue lives in `<config_dir>/state/` as per-source pairs `<source>.extract`/`<source>.synth`
+(sources: `jira`, `raw`, one per repo), produced by `scripts/check_for_changes.py` and
+drained by `/ingest`. Priority order `jira → raw → repos` (§5 synth ordering); a queue file
+is deleted when it empties. The same queues drive both the big legacy backlog and the
+ongoing forward trickle.
+
+**Tooling.**
+- `scripts/check_for_changes.py` — detect changes in Jira (per-project cursor) and external
+  git source repos (stateless: `fetch` → `pull --ff-only` → enqueue `diff before..HEAD`,
+  so HEAD is the watermark); enqueue into `*.extract`. `--force <paths|folders|KEYs>`
+  enqueues explicitly (folders expand recursively — the `raw/`/ad-hoc path); `--backfill
+  <repo>` enqueues a repo's tracked files (first-time repo ingest).
+- `scripts/queues.py` — the per-source two-phase queues + CLI (`status`, `next-extract`,
+  `next-synth`, `extracted`, `synthed`, `enqueue`). Sole writer of queue state.
+- `scripts/sources.py` — identity↔source mapping and the fixed priority order.
+- `scripts/jira_utils.py` — Jira Cloud API + ADF→Markdown; `--print-md` streams a ticket
+  as Markdown, `--stamp-hash` updates an import's `content_hash`; creds from
+  `<config_dir>/jira.token`; `--list-attachments`/`--attachments-ext png,pdf` for triage.
+- `scripts/config.py` — loads `wiki.config.yaml` (project identity for the scripts).
+- `scripts/jira_cursor.py` — `<config_dir>/state/jira-cursor.json` store, **Jira detection cursor only** (per project).
+- `scripts/ingest_state.py` — classify/key/import helpers + `extract-action` (the per-
+  identity extract dispatch); source-kind/key/repo resolution.
+- `scripts/extract_docs.py` — mechanical binary-doc → `raw/imports/<hash8>/<name>.md` (explicit paths).
+- `scripts/git_changes.py` — git fetch/pull/diff helpers (stateless detection).
+- `scripts/lint_wiki.py` — mechanical (non-LLM) wiki lint (§5 Lint).
+- `qmd` — hybrid search over `raw/` + `wiki/` (project-local `.qmd/` index,
+  gitignored; collections `raw`, `wiki`); refreshed via `qmd update && qmd embed`
+  by synth (start+end) and lint (start).
+
+**Setup (new machine).** See `README.md` ("Before you start") — credentials, Python
+deps, binary-doc converters, and the optional qmd search index.
+
+---
+
+## 8. Conventions quick-reference
+
+- Never hand-edit anything under a source repo (`wiki.config.yaml` `sources`) or `raw/`
+  (external repos are advanced only by `git pull --ff-only` at detection).
+- Queue state: an identity lives in exactly one of `<config_dir>/state/<source>.{extract,synth}`
+  (or neither = done); `queues.py` is its only writer.
+- Imports under `raw/imports/` are written **only** by extract; synthesize reads them
+  read-only. One import per *awkward* raw source (`raw/imports/jira/<KEY>.md` or
+  `raw/imports/<hash8>/<name>.md`); code and plain-text have no import.
+- Page slugs: kebab-case, concept-named, singular (`sample-set`, not `SampleSets`).
+- Dates: ISO `YYYY-MM-DD`; citations use `YYYY-MM`.
+- Citations: `[PROJ-1234, 2025-03]` for Jira, `[code: src/...]` for code,
+  `[doc: path]` for an authored doc.
+- Confidence: `(code-confirmed)` > `(doc-stated)` > `(ticket-only)`.
+- References link the import for Jira/doc sources (`../../raw/imports/jira/<KEY>.md`; from
+  `wiki/overview.md`, `../raw/imports/jira/<KEY>.md`); raw code/prose have no import — the
+  inline citation is the provenance.
+- Keep pages focused; split when a page covers more than one concept.
