@@ -7,21 +7,21 @@ description: Health-check the wiki — mechanical (deterministic script) plus se
 
 Two tiers. Run both (default) or just the mechanical tier with `mechanical`.
 
-## 0. Index refresh (qmd)
-`qmd update && qmd embed` — the semantic tier must search a current index. If
-`qmd` is missing or the refresh fails, continue without it and note
-`qmd-unavailable` in the report and the `lint` line in `log.md`; never block
-the lint.
-
 ## 1. Mechanical (always; no LLM)
 Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"`. Deterministic checks: broken `[[wikilinks]]`,
 orphan pages, duplicate slugs, `index.md` drift, frontmatter gaps. Exit 0 = clean,
 non-zero = issues (printed). This is cheap — safe to run often and forward.
 
-If the arg is `mechanical`, stop here and report the output.
+If the arg is `mechanical`, stop here and report the output. The mechanical tier is pure
+Python: it touches no LLM, no model, and no qmd index.
 
 ## 2. Semantic (Opus subagent)
-Only when no synth/extract subagent is running (lint writes to `wiki/`), **spawn one
+First refresh the search index so the semantic pass queries current content:
+`qmd update && qmd embed`. If `qmd` is missing or the refresh fails, continue without it
+and note `qmd-unavailable` in the report and the `lint` line in `log.md`; never block the
+lint.
+
+Then, only when no synth/extract subagent is running (lint writes to `wiki/`), **spawn one
 Opus lint subagent** (Agent tool, `subagent_type: general-purpose`, `model: opus`)
 with the prompt below, passing it the mechanical output. Wait for it and report.
 
