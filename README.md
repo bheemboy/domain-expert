@@ -1,4 +1,4 @@
-# project-llm-wiki
+# domain-expert
 
 A Claude Code plugin that turns a software project's Jira tickets, source code, and
 documents into an interlinked, provenance-tracked markdown wiki.

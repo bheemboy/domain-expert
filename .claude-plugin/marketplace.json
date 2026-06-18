@@ -1,10 +1,10 @@
 {
-  "name": "project-llm-wiki",
-  "description": "Marketplace for the project-llm-wiki plugin.",
+  "name": "domain-expert",
+  "description": "Marketplace for the domain-expert plugin.",
   "owner": { "name": "Sunil Rehman" },
   "plugins": [
     {
-      "name": "project-llm-wiki",
+      "name": "domain-expert",
       "description": "LLM-maintained wiki for a software project (Jira + code + docs).",
       "version": "0.1.0",
       "source": "./",

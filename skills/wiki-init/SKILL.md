@@ -1,6 +1,6 @@
 ---
 name: wiki-init
-description: Bootstrap a new project-llm-wiki repo (scaffold wiki/, wiki.config.yaml, CLAUDE.md) or upgrade an existing repo's generic schema body. Use when starting a wiki for a new product, or to refresh the schema after a plugin update.
+description: Bootstrap a new domain-expert repo (scaffold wiki/, wiki.config.yaml, CLAUDE.md) or upgrade an existing repo's generic schema body. Use when starting a wiki for a new product, or to refresh the schema after a plugin update.
 ---
 
 # Wiki Init (bootstrap / upgrade)

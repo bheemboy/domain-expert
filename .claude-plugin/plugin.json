@@ -1,5 +1,5 @@
 {
-  "name": "project-llm-wiki",
+  "name": "domain-expert",
   "description": "LLM-maintained wiki for a software project: ingests Jira + code + docs into an interlinked, provenance-tracked markdown wiki. Skills: wiki-init, wiki-queue, wiki-ingest, wiki-lint.",
   "version": "0.1.0",
   "author": { "name": "Sunil Rehman" },
