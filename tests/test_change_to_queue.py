@@ -1,0 +1,149 @@
+# tests/test_change_to_queue.py
+import textwrap
+from datetime import date
+from pathlib import Path
+
+
+def _cfg(tmp_path, monkeypatch, repos=()):
+    cfg = tmp_path / "wiki.config.yaml"
+    repo_lines = "".join(f"\n        - {r}" for r in repos)  # 8-space indent = dedent baseline
+    cfg.write_text(textwrap.dedent(f"""
+        project:
+          key: TESTPROJ
+          name: "T"
+          config_dir: {tmp_path}/state
+        jira:
+          base_url: https://example.atlassian.net
+          jql: |
+            project = TESTPROJ
+        sources:{repo_lines}
+    """))
+    monkeypatch.setenv("WIKI_CONFIG", str(cfg))
+    monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
+
+
+def test_enqueue_git_source_changes_are_idempotent(tmp_path, monkeypatch):
+    """Two detection passes with no new commits in between must not duplicate lines.
+    (scan_git_candidates is stubbed; statelessness comes from HEAD advancing on pull,
+    which the stub models by returning files only on the first pass.)"""
+    repo = tmp_path / "asv"
+    repo.mkdir()
+    _cfg(tmp_path, monkeypatch, [str(repo)])
+    import queues, sources, check_for_changes as cfc
+
+    name = sources.clean_name(repo)
+    changed = [str(repo / "a.py"), str(repo / "b.py")]
+    calls = {"n": 0}
+
+    def fake_scan():
+        # First pass sees the new commit's files; after pull, HEAD advances, so a
+        # second pass with no new commits returns nothing.
+        calls["n"] += 1
+        return [(name, changed)] if calls["n"] == 1 else []
+
+    monkeypatch.setattr(cfc, "scan_git_candidates", fake_scan)
+    monkeypatch.setattr(cfc, "enumerate_jira_candidates", lambda: [])
+
+    cfc.run(check_jira=False, check_git=True)
+    cfc.run(check_jira=False, check_git=True)   # nothing new -> no dupes
+
+    assert queues.read(queues.extract_file(name)) == changed
+
+
+def test_expand_identities_folder_recurses(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / "sub").mkdir(parents=True)
+    (repo / "a.py").write_text("x")
+    (repo / "sub" / "b.md").write_text("y")
+    _cfg(tmp_path, monkeypatch, [str(repo)])
+    import check_for_changes as cfc
+
+    # A directory expands to every file beneath it (resolved, recursive, sorted).
+    out = cfc._expand_identities([str(repo)])
+    assert out == [str((repo / "a.py").resolve()), str((repo / "sub" / "b.md").resolve())]
+
+
+def _git_init(repo: Path) -> None:
+    import subprocess
+    for args in (["init", "-q"], ["add", "-A"],
+                 ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "x"]):
+        subprocess.run(["git", "-C", str(repo), *args], check=True,
+                       capture_output=True, text=True)
+
+
+def test_backfill_enqueues_tracked_files_only(tmp_path, monkeypatch):
+    """--backfill expands a repo to its git-tracked files (absolute), skipping
+    untracked artifacts and never recursing into .git/."""
+    repo = tmp_path / "asv"
+    (repo / "sub").mkdir(parents=True)
+    (repo / "a.py").write_text("x")
+    (repo / "sub" / "b.md").write_text("y")
+    _git_init(repo)
+    (repo / "untracked.tmp").write_text("z")     # not committed -> excluded
+    _cfg(tmp_path, monkeypatch, [str(repo)])
+    import check_for_changes as cfc, sources
+
+    name = sources.clean_name(repo)
+    expected = [str((repo / "a.py").resolve()), str((repo / "sub" / "b.md").resolve())]
+    # By configured source name and by path resolve to the same tracked-file set.
+    assert sorted(cfc._backfill_identities([name])) == sorted(expected)
+    assert sorted(cfc._backfill_identities([str(repo)])) == sorted(expected)
+
+
+def test_backfill_rejects_non_repo(tmp_path, monkeypatch):
+    import pytest
+    _cfg(tmp_path, monkeypatch, [])
+    import check_for_changes as cfc
+
+    with pytest.raises(ValueError):
+        cfc._backfill_identities([str(tmp_path / "not-a-repo")])
+
+
+def test_expand_identities_keeps_keys_and_files(tmp_path, monkeypatch):
+    f = tmp_path / "f.pdf"
+    f.write_text("x")
+    _cfg(tmp_path, monkeypatch, [])
+    import check_for_changes as cfc
+
+    assert cfc._expand_identities(["TESTPROJ-7"]) == ["TESTPROJ-7"]      # KEY untouched
+    assert cfc._expand_identities([str(f)]) == [str(f.resolve())]         # file -> absolute
+
+
+def test_run_jira_enqueues_and_advances_cursor(tmp_path, monkeypatch):
+    """The Jira side of run(): keys land in jira.extract and the cursor advances at
+    detection (no pending target — that machinery is gone)."""
+    _cfg(tmp_path, monkeypatch, [])
+    import queues, jira_cursor, check_for_changes as cfc
+
+    monkeypatch.setattr(cfc, "enumerate_jira_candidates",
+                        lambda: ["TESTPROJ-1", "TESTPROJ-2"])
+
+    cfc.run(check_jira=True, check_git=False)
+
+    assert queues.read(queues.extract_file("jira")) == ["TESTPROJ-1", "TESTPROJ-2"]
+    assert jira_cursor.get("TESTPROJ") == date.today().isoformat()
+
+
+def test_full_flow_git_run_drain(tmp_path, monkeypatch):
+    """End-to-end: run() enqueues a git file; extract+synth drain it; no watermark
+    state is touched (HEAD is the watermark, advanced by the pull inside scan)."""
+    repo = tmp_path / "asv"
+    repo.mkdir()
+    _cfg(tmp_path, monkeypatch, [str(repo)])
+    import queues, sources, jira_cursor, check_for_changes as cfc
+
+    name = sources.clean_name(repo)
+    f = str(repo / "a.py")
+    monkeypatch.setattr(cfc, "scan_git_candidates", lambda: [(name, [f])])
+    monkeypatch.setattr(cfc, "enumerate_jira_candidates", lambda: [])
+
+    cfc.run(check_jira=False, check_git=True)
+    assert queues.next_extract(10) == [(name, f)]
+
+    queues.move_to_synth(name, f)                # extract phase
+    assert queues.next_synth(10) == [(name, f)]
+
+    queues.synthed(name, f)                      # synth phase
+    assert queues.source_empty(name)
+    # State holds only the jira cursor; git left no trace.
+    assert jira_cursor.get("TESTPROJ") is None
