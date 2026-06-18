@@ -33,7 +33,17 @@ the marketplace from a local clone path instead of `bheemboy/domain-expert`.)
 
 ## Per-machine prerequisites
 
-1. **Python deps:** `pip install -r <path-to-this-plugin>/requirements.txt`
+1. **Python deps** — the runtime needs only `pyyaml` and `requests` (`pytest` is for
+   running this plugin's own tests). Either install them by name:
+   ```
+   pip install pyyaml requests
+   ```
+   …or install the plugin's pinned set without hunting for its versioned install path:
+   ```
+   pip install -r "$(find ~/.claude/plugins/cache -path '*domain-expert*' -name requirements.txt | head -1)"
+   ```
+   (Marketplace plugins live at `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`;
+   the version is in the path, so prefer the command above over a hardcoded path.)
 2. **Binary-doc converters** (for PDF/Office extraction):
    ```
    sudo apt install poppler-utils pandoc libreoffice
