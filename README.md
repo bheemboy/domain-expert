@@ -91,7 +91,7 @@ Commands are grouped by skill.
 
 | Command | What it does, and when to use it |
 |---|---|
-| `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki for a new product, and again after a plugin update to refresh the schema (your §0 is preserved). |
+| `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki for a new product, and again after a plugin update to refresh the schema. Upgrade rewrites only the generic schema body and leaves your hand-written product-identity section (`CLAUDE.md` §0: names, Jira key, source repos) untouched. |
 | `/wiki-ingest` | Detects new Jira and repo changes when the queue is empty, then ingests everything pending (extract, then synthesize). The default day-to-day command: run it to bring the wiki up to date. |
 | `/wiki-ingest N` | Same as `/wiki-ingest`, including the detect-when-empty step, but caps each phase at N items. Use it to work through a large backlog in controlled chunks (for example, `/wiki-ingest 30` repeatedly) instead of one long run. |
 | `/wiki-ingest <path\|folder>` | Enqueues the given `raw/` path (folders expand recursively) and ingests it in one step, skipping detection. Use it to pull in a specific document or folder you just dropped into `raw/`. |
