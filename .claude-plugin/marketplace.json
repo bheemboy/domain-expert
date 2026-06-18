@@ -1,0 +1,14 @@
+{
+  "name": "project-llm-wiki",
+  "description": "Marketplace for the project-llm-wiki plugin.",
+  "owner": { "name": "Sunil Rehman" },
+  "plugins": [
+    {
+      "name": "project-llm-wiki",
+      "description": "LLM-maintained wiki for a software project (Jira + code + docs).",
+      "version": "0.1.0",
+      "source": "./",
+      "author": { "name": "Sunil Rehman" }
+    }
+  ]
+}
