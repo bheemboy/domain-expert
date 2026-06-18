@@ -82,7 +82,7 @@ Commands are grouped by skill.
 | `/wiki-queue jira` | Detects Jira changes only and enqueues them, including the first-time backlog when no cursor exists yet. Use it to prime or refresh Jira without touching repos. |
 | `/wiki-queue repos` | Detects external-repo changes only (the commits a `git pull` brings in) and enqueues them. Use it to pick up source-code changes without a Jira pass. |
 | `/wiki-queue <path\|folder>` | Enqueues a path under `raw/` or a configured source repo (folders expand recursively) without ingesting it into the wiki. Give the path relative to the wiki repo root (for example, `raw/specs`) or as an absolute path. A path outside `raw/` and the configured source repos is rejected. Use it to stage several `raw/` drops before a single `/wiki-ingest`. |
-| `/wiki-queue backfill <repo>` | Enqueues every tracked file in a configured repo. Use it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
+| `/wiki-queue backfill <repo> …` | Enqueues every tracked file in the named repo. Name a repo by its `wiki.config.yaml` source name (for example, `asv`) or by path, and pass several to backfill more than one at once. At least one repo is required — there is no bare "backfill everything" form, since backfill enqueues every tracked file. Use it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
 | `/wiki-queue --dry-run` | Previews what detection would enqueue, fetching but not pulling, queueing, or writing state. Use it to preview a detection pass before committing to it. |
 | `/wiki-queue status` | Shows pending extract and synth counts per source. Use it to check what's queued before or after a run. |
 
