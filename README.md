@@ -18,20 +18,11 @@ Install the plugin once per machine.
    /plugin marketplace add bheemboy/domain-expert
    /plugin install domain-expert@domain-expert
    ```
-   To update later, run `/plugin marketplace update domain-expert`. During development, you
-   can add the marketplace from a local clone path instead of `bheemboy/domain-expert`.
-2. Install the Python dependencies. The runtime needs only `pyyaml` and `requests`
-   (`pytest` is for running this plugin's own tests):
+   To update later, run `/plugin marketplace update domain-expert`.
+2. Install the Python dependencies:
    ```
    pip install pyyaml requests
    ```
-   To install the plugin's pinned set instead, without hunting for its versioned install
-   path:
-   ```
-   pip install -r "$(find ~/.claude/plugins/cache -path '*domain-expert*' -name requirements.txt | head -1)"
-   ```
-   Marketplace plugins live at `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`.
-   The version is in the path, so prefer the command above over a hardcoded path.
 3. Install the binary-document converters, used for PDF and Office extraction:
    ```
    sudo apt install poppler-utils pandoc libreoffice
@@ -89,12 +80,16 @@ Commands are grouped by skill.
 | `/wiki-queue` | Forces a full detection pass (Jira and repos) and enqueues what changed, without draining. Use it when you know new work landed and want it queued now, rather than waiting for `/wiki-ingest` to detect on an empty queue. |
 | `/wiki-queue jira` | Detects Jira changes only and enqueues them, including the first-time backlog when no cursor exists yet. Use it to prime or refresh Jira without touching repos. |
 | `/wiki-queue code` | Detects external-repo changes only (the commits a `git pull` brings in) and enqueues them. Use it to pick up source-code changes without a Jira pass. |
-| `/wiki-queue <path\|folder>` | Enqueues a `raw/` drop or ad-hoc paths (folders expand recursively) without draining. Use it to stage several drops before a single `/wiki-ingest`. |
+| `/wiki-queue <path\|folder>` | Enqueues the given path (folders expand recursively) without draining. Use it to stage several `raw/` drops before a single `/wiki-ingest`. |
 | `/wiki-queue backfill <repo>` | Enqueues every tracked file in a configured repo. Use it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
 | `/wiki-queue --dry-run` | Previews what detection would enqueue, fetching but not pulling, queueing, or writing state. Use it to preview a detection pass before committing to it. |
 | `/wiki-queue status` | Shows pending extract and synth counts per source. Use it to check what's queued before or after a run. |
 
 Detection is incremental and idempotent; running it with nothing new is a no-op.
+
+Path arguments (to `/wiki-ingest` and `/wiki-queue`) are taken relative to the wiki repo
+root, or absolute, and must resolve under `raw/` or a configured source repo; an unrelated
+external path is rejected.
 
 ## First-time priming
 
