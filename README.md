@@ -74,22 +74,18 @@ Commands are grouped by skill.
 | `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki for a new product, and again after a plugin update to refresh the schema. Upgrade rewrites only the generic schema body and leaves your hand-written product-identity section (`CLAUDE.md` §0: names, Jira key, source repos) untouched. |
 | `/wiki-ingest` | Detects new Jira and repo changes when the queue is empty, then ingests everything pending (extract, then synthesize). The default day-to-day command: run it to bring the wiki up to date. |
 | `/wiki-ingest N` | Same as `/wiki-ingest`, including the detect-when-empty step, but caps each phase at N items. Use it to work through a large backlog in controlled chunks (for example, `/wiki-ingest 30` repeatedly) instead of one long run. |
-| `/wiki-ingest <path\|folder>` | Enqueues the given `raw/` path (folders expand recursively) and ingests it in one step, skipping detection. Use it to pull in a specific document or folder you just dropped into `raw/`. |
+| `/wiki-ingest <path\|folder>` | Enqueues a path under `raw/` or a configured source repo (folders expand recursively), then ingests it in one step, skipping detection. Give the path relative to the wiki repo root (for example, `raw/specs/api.pdf`) or as an absolute path. A path outside `raw/` and the configured source repos is rejected. Use it to pull in a specific document or folder you just dropped into `raw/`. |
 | `/wiki-lint` | Runs the full health-check: deterministic checks plus a semantic review (stale, contradictory, or unsuperseded claims). Run it periodically, and before relying on the wiki for answers. |
 | `/wiki-lint mechanical` | Runs only the fast deterministic checks (no LLM): broken `[[wikilinks]]`, orphan pages, duplicate slugs, index drift, and frontmatter gaps. Use it for a quick structural check or in a pre-commit or CI step. |
 | `/wiki-queue` | Forces a full detection pass (Jira and repos) and enqueues what changed, without draining. Use it when you know new work landed and want it queued now, rather than waiting for `/wiki-ingest` to detect on an empty queue. |
 | `/wiki-queue jira` | Detects Jira changes only and enqueues them, including the first-time backlog when no cursor exists yet. Use it to prime or refresh Jira without touching repos. |
 | `/wiki-queue code` | Detects external-repo changes only (the commits a `git pull` brings in) and enqueues them. Use it to pick up source-code changes without a Jira pass. |
-| `/wiki-queue <path\|folder>` | Enqueues the given path (folders expand recursively) without draining. Use it to stage several `raw/` drops before a single `/wiki-ingest`. |
+| `/wiki-queue <path\|folder>` | Enqueues a path under `raw/` or a configured source repo (folders expand recursively) without draining. Give the path relative to the wiki repo root (for example, `raw/specs`) or as an absolute path. A path outside `raw/` and the configured source repos is rejected. Use it to stage several `raw/` drops before a single `/wiki-ingest`. |
 | `/wiki-queue backfill <repo>` | Enqueues every tracked file in a configured repo. Use it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
 | `/wiki-queue --dry-run` | Previews what detection would enqueue, fetching but not pulling, queueing, or writing state. Use it to preview a detection pass before committing to it. |
 | `/wiki-queue status` | Shows pending extract and synth counts per source. Use it to check what's queued before or after a run. |
 
 Detection is incremental and idempotent; running it with nothing new is a no-op.
-
-Path arguments (to `/wiki-ingest` and `/wiki-queue`) are taken relative to the wiki repo
-root, or absolute, and must resolve under `raw/` or a configured source repo; an unrelated
-external path is rejected.
 
 ## First-time priming
 
