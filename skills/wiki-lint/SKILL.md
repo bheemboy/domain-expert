@@ -7,13 +7,13 @@ description: Health-check the wiki — mechanical (deterministic script) plus se
 
 Two tiers. Run both (default) or just the mechanical tier with `mechanical`.
 
-## 1. Mechanical (always; no LLM)
+## 1. Mechanical (always; deterministic)
 Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"`. Deterministic checks: broken `[[wikilinks]]`,
 orphan pages, duplicate slugs, `index.md` drift, frontmatter gaps. Exit 0 = clean,
 non-zero = issues (printed). This is cheap — safe to run often and forward.
 
 If the arg is `mechanical`, stop here and report the output. The mechanical tier is pure
-Python: it touches no LLM, no model, and no qmd index.
+Python: it touches no model and no qmd index.
 
 ## 2. Semantic (Opus subagent)
 First refresh the search index so the semantic pass queries current content:
