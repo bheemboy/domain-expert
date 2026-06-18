@@ -645,7 +645,7 @@ def _default_export_root() -> Path:
     repo — these standalone export commands are not part of the /ingest flow (which
     uses --print-md + --attachments-dir /tmp/jira-<KEY>), so their output must never
     land inside the wiki repo. Override with --out-dir / --attachments-dir."""
-    return Path(tempfile.gettempdir()) / "ts-wiki-jira-exports"
+    return Path(tempfile.gettempdir()) / "wiki-jira-exports"
 
 
 def main():

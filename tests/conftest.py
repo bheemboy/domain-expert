@@ -25,7 +25,7 @@ def pytest_configure(config):
     if os.environ.get("WIKI_CONFIG"):
         return  # already set (e.g. by the caller) — do not override
 
-    td = tempfile.mkdtemp(prefix="ts-wiki-test-")
+    td = tempfile.mkdtemp(prefix="wiki-test-")
     cfg_path = Path(td) / "wiki.config.yaml"
     cfg_path.write_text(textwrap.dedent(f"""
         project:
