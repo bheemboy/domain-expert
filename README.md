@@ -80,19 +80,34 @@ scaffolds:
 
 Then complete the per-machine prerequisites above and prime your sources (next section).
 
-## Day-to-day
+## Usage
 
-Everything is driven by slash commands — **no direct `python scripts/…` calls**:
+Everything is driven by slash commands — **no direct `python scripts/…` calls**.
+
+**What you normally run** (the whole daily loop is these two):
 
 | Command | Effect |
 |---|---|
-| `/wiki-queue` | Detect Jira + repos and enqueue what changed |
-| `/wiki-queue status` | Show pending queue counts (no detection) |
-| `/wiki-ingest` | Drain the queue (extract → synth); `/wiki-ingest N` for a per-phase budget |
-| `/wiki-lint` | Full health-check; `/wiki-lint mechanical` for the fast deterministic check |
-| `/wiki-init` | Regenerate `CLAUDE.md` from the current plugin schema (preserves §0) |
+| `/wiki-ingest` | The driver. When the queue is empty it first detects new Jira/repo changes, then ingests them (extract → synth). `/wiki-ingest N` processes in chunks of N. |
+| `/wiki-lint` | Periodic health-check (mechanical + semantic). |
 
-Detection is incremental and idempotent — re-running with nothing new is a no-op.
+**For inspection:**
+
+| Command | Effect |
+|---|---|
+| `/wiki-queue status` | Show pending queue counts. Changes nothing. |
+| `/wiki-lint mechanical` | Fast deterministic checks only (no LLM). |
+
+**For special / first-time / custom scenarios:**
+
+| Command | When |
+|---|---|
+| `/wiki-queue` | Force a detection pass now without draining (e.g. you know new tickets landed and don't want to wait for the queue to empty). |
+| `/wiki-queue jira` · `code` · `backfill <repo>` · `<path>` · `--dry-run` | Scoped or first-time detection — see [First-time priming](#first-time-priming). |
+| `/wiki-ingest <path\|folder>` | Ad-hoc: enqueue a `raw/` drop and ingest it in one step. |
+| `/wiki-init` | Bootstrap a new wiki repo, or upgrade `CLAUDE.md` to the current plugin schema (preserves §0). |
+
+Detection is incremental and idempotent — running it with nothing new is a no-op.
 
 ## First-time priming
 
