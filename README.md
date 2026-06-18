@@ -5,35 +5,22 @@ documents into an interlinked, provenance-tracked markdown wiki: an LLM-maintain
 "domain expert" for a product.
 
 The plugin provides the tooling and schema; each product's wiki content lives in its own
-repo. You install the plugin once, then point it at any number of wiki repos (`ts-wiki`,
-`OLSV`, `CDS2ACQ`, `OLAC`). Each repo keeps its own `wiki/`, `raw/`, and `wiki.config.yaml`,
-while the scripts and skills travel with the plugin.
+repo, one per product. A wiki repo keeps its own `wiki/`, `raw/`, and `wiki.config.yaml`,
+while the scripts and skills travel with the plugin. You install the plugin once per
+machine, then create or adopt a wiki repo for each product.
 
-## Skills
+## Installation
 
-The plugin provides four skills, split across the pipeline's two layers. `/wiki-queue`
-detects new or changed sources and queues them; `/wiki-ingest` drains that queue into wiki
-pages (extract, then synthesize). `/wiki-init` scaffolds or upgrades a wiki repo, and
-`/wiki-lint` health-checks the result. The [Command reference](#command-reference) lists
-every command and argument form.
+Install the plugin once per machine.
 
-## Install
-
-Add the marketplace and install the plugin in Claude Code:
-
-```
-/plugin marketplace add bheemboy/domain-expert
-/plugin install domain-expert@domain-expert
-```
-
-To update later, run `/plugin marketplace update domain-expert`. During development, you
-can add the marketplace from a local clone path instead of `bheemboy/domain-expert`.
-
-## Per-machine prerequisites
-
-Complete these once per machine.
-
-1. Install the Python dependencies. The runtime needs only `pyyaml` and `requests`
+1. Add the marketplace and install the plugin, in Claude Code:
+   ```
+   /plugin marketplace add bheemboy/domain-expert
+   /plugin install domain-expert@domain-expert
+   ```
+   To update later, run `/plugin marketplace update domain-expert`. During development, you
+   can add the marketplace from a local clone path instead of `bheemboy/domain-expert`.
+2. Install the Python dependencies. The runtime needs only `pyyaml` and `requests`
    (`pytest` is for running this plugin's own tests):
    ```
    pip install pyyaml requests
@@ -45,44 +32,46 @@ Complete these once per machine.
    ```
    Marketplace plugins live at `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/`.
    The version is in the path, so prefer the command above over a hardcoded path.
-2. Install the binary-document converters, used for PDF and Office extraction:
+3. Install the binary-document converters, used for PDF and Office extraction:
    ```
    sudo apt install poppler-utils pandoc libreoffice
    ```
-3. Create the Jira credentials file at your wiki's configured `config_dir`
+
+## Start a new wiki for a product
+
+Do this once per wiki repo. If you are adopting a wiki repo someone already scaffolded,
+skip step 1 and do steps 2 and 3 for your checkout.
+
+1. In a fresh, empty repo, run `/wiki-init` to scaffold the wiki. It interviews you for the
+   product identity (display name, internal name, Jira project key, config dir, Jira
+   `base_url` and JQL (Jira Query Language), source repos, what counts as business-relevant,
+   domain acronyms, and brand or rename terms), then creates:
+   - `wiki/` seed tree (`index.md`, `log.md`, `overview.md`, and the `entities/`,
+     `concepts/`, `processes/`, `rules/`, and `terminology/` directories)
+   - `wiki.config.yaml` (project identity for the tooling)
+   - `CLAUDE.md` (the schema: §0 your product identity, §1+ the generic body)
+   - `.gitignore`
+2. Create the Jira credentials file at the `config_dir` you set in step 1
    (`<config_dir>/jira.token`, mode 600):
    ```
    JIRA_EMAIL=you@example.com
    JIRA_TOKEN=YOUR_API_TOKEN
    ```
    You can instead export `JIRA_EMAIL` and `JIRA_TOKEN`; the file wins when both are present.
-4. *(Optional)* Build the qmd search index. It speeds up related-page lookup during ingest
-   and lint; the skills fall back to `grep` when it is absent. Build it once, from the wiki
-   repo root:
+3. *(Optional)* Build the qmd search index. It speeds up related-page lookup during ingest
+   and lint; the skills fall back to `grep` when it is absent. Run once, from the wiki repo
+   root:
    ```
    qmd init
    qmd collection add raw  --name raw
    qmd collection add wiki --name wiki
    qmd update && qmd embed
    ```
-   The index lives in `.qmd/` (gitignored, machine-local). `/wiki-ingest` refreshes it at
-   the start and end of a run, and `/wiki-lint` at the start.
+   The index lives in `.qmd/` (gitignored and machine-local, so rebuild it per machine).
+   `/wiki-ingest` refreshes it at the start and end of a run, and `/wiki-lint` at the start.
 
-## Start a new wiki for a product
-
-In a fresh, empty repo, run `/wiki-init`. It interviews you for the product identity
-(display name, internal name, Jira project key, config dir, Jira `base_url` and JQL (Jira
-Query Language), source repos, what counts as business-relevant, domain acronyms, and brand
-or rename terms), then scaffolds:
-
-- `wiki/` seed tree (`index.md`, `log.md`, `overview.md`, and the `entities/`, `concepts/`,
-  `processes/`, `rules/`, and `terminology/` directories)
-- `wiki.config.yaml` (project identity for the tooling)
-- `CLAUDE.md` (the schema: §0 your identity, §1+ the generic body)
-- `.gitignore`
-
-Then complete the per-machine prerequisites above and prime your sources (see
-[First-time priming](#first-time-priming)).
+Then prime your sources (see [First-time priming](#first-time-priming)) and run
+`/wiki-ingest`.
 
 ## Command reference
 
