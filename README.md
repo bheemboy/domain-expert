@@ -88,6 +88,13 @@ Commands are grouped by skill.
 
 Detection is incremental and idempotent; running it with nothing new is a no-op.
 
+`backfill` and the `<path|folder>` forms enqueue different file sets. `backfill` uses
+`git ls-files`, so it takes only the repo's **git-tracked** files (ignored files, build
+output, and `.git/` internals are excluded). The `<path|folder>` forms walk the
+filesystem, so they take **every** file under the path, tracked or not. Use `backfill` for
+a whole source repo; use `<path|folder>` for `raw/` drops or specific files, not for a repo
+root (which would sweep in untracked and ignored files).
+
 ## First-time priming
 
 Because detection is incremental, a brand-new source needs a one-time prime:
