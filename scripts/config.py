@@ -103,3 +103,44 @@ def synth_tuning() -> dict:
         else:
             merged[kind] = vals
     return merged
+
+
+# Built-in ignore globs: universally junk for a domain wiki — vendored trees,
+# build/minified output, generated TS lib artifacts, lockfiles, binary assets,
+# styling, and certs. Consumer repos extend these via an `ignore:` list (e.g. a
+# committed compiled lib like `ac_portal/local_modules/**`). Matched over the
+# repo-relative POSIX path; see ignore.py for semantics.
+_IGNORE_DEFAULTS = [
+    "**/node_modules/**",
+    "**/vendor/**",
+    "**/*.min.js",
+    "**/*.min.css",
+    "**/*.map",
+    "**/*.bundle.js",
+    "**/*.d.ts",
+    "**/*.metadata.json",
+    "**/*.lock",
+    "**/package-lock.json",
+    "**/yarn.lock",
+    "**/pnpm-lock.yaml",
+    "**/poetry.lock",
+    "**/*.svg", "**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.ico",
+    "**/*.ttf", "**/*.otf", "**/*.woff", "**/*.woff2", "**/*.eot",
+    "**/*.wav", "**/*.mp3", "**/*.mp4",
+    "**/*.scss", "**/*.css", "**/*.less", "**/*.sass",
+    "**/*.pem",
+]
+
+
+def ignore_globs() -> list[str]:
+    """Enqueue-time ignore globs: baked defaults (_IGNORE_DEFAULTS) followed by the
+    consumer repo's `ignore:` list, de-duplicated with defaults kept first. A config
+    with no `ignore:` block reproduces just the defaults."""
+    user = load().get("ignore") or []
+    seen: set[str] = set()
+    out: list[str] = []
+    for g in [*_IGNORE_DEFAULTS, *user]:
+        if g not in seen:
+            seen.add(g)
+            out.append(g)
+    return out
