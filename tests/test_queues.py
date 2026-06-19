@@ -118,7 +118,10 @@ def test_next_synth_priority_order(tmp_path, monkeypatch):
     q = _q(tmp_path, monkeypatch, [str(repo)])
     q._write(q.synth_file("raw"), ["/abs/raw/a.md"])
     q._write(q.synth_file("jira"), ["TESTPROJ-9"])
-    assert q.next_synth(10) == [("jira", "TESTPROJ-9"), ("raw", "/abs/raw/a.md")]
+    assert q.next_synth(10) == [
+        ("jira", None, None, "TESTPROJ-9"),
+        ("raw", None, None, "/abs/raw/a.md"),
+    ]
 
 
 def test_next_extract_empty(tmp_path, monkeypatch):
@@ -157,6 +160,87 @@ def test_cli_next_extract_prints_tab_separated(tmp_path, monkeypatch):
     assert r.returncode == 0, r.stderr
     assert r.stdout.splitlines() == ["jira\tTESTPROJ-1"]
 
+
+def test_parse_synth_line_with_metadata():
+    import queues
+    assert queues.parse_synth_line("42\tdense\t/abs/x.py") == (42, "dense", "/abs/x.py")
+
+def test_parse_synth_line_bare_identity_is_backward_compatible():
+    import queues
+    assert queues.parse_synth_line("TESTPROJ-1") == (None, None, "TESTPROJ-1")
+
+def test_identity_is_last_tab_field():
+    import queues
+    assert queues._identity("42\tdense\t/abs/x.py") == "/abs/x.py"
+    assert queues._identity("TESTPROJ-1") == "TESTPROJ-1"
+
+def test_move_to_synth_writes_metadata_line(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.enqueue("jira", "TESTPROJ-1")
+    q.move_to_synth("jira", "TESTPROJ-1", lines=42, flag="dense")
+    assert q.read(q.synth_file("jira")) == ["42\tdense\tTESTPROJ-1"]
+
+def test_move_to_synth_without_metadata_stays_bare(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.enqueue("jira", "TESTPROJ-1")
+    q.move_to_synth("jira", "TESTPROJ-1")
+    assert q.read(q.synth_file("jira")) == ["TESTPROJ-1"]
+
+def test_next_synth_returns_source_lines_flag_identity(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q._write(q.synth_file("jira"), ["42\tdense\tTESTPROJ-9", "TESTPROJ-10"])
+    assert q.next_synth(10) == [
+        ("jira", 42, "dense", "TESTPROJ-9"),
+        ("jira", None, None, "TESTPROJ-10"),
+    ]
+
+def test_synthed_matches_on_identity_despite_metadata(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q._write(q.synth_file("jira"), ["42\tdense\tTESTPROJ-1", "7\troutine\tTESTPROJ-2"])
+    q.synthed("jira", "TESTPROJ-1")
+    assert q.read(q.synth_file("jira")) == ["7\troutine\tTESTPROJ-2"]
+
+def test_drop_removes_from_extract(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.enqueue("raw", "/abs/raw/style.css")
+    q.drop("raw", "/abs/raw/style.css")
+    assert q.read(q.extract_file("raw")) == []
+    assert q.read(q.synth_file("raw")) == []
+
+def test_note_roundtrip_and_clear(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.write_note("/abs/x.py", "billing rules live in calc_invoice")
+    assert q.read_note("/abs/x.py") == "billing rules live in calc_invoice"
+    q.clear_note("/abs/x.py")
+    assert q.read_note("/abs/x.py") == ""
+
+def test_synthed_clears_note(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q._write(q.synth_file("raw"), ["10\troutine\t/abs/x.py"])
+    q.write_note("/abs/x.py", "note")
+    q.synthed("raw", "/abs/x.py")
+    assert q.read_note("/abs/x.py") == ""
+
+def test_cli_extracted_with_metadata(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.enqueue("jira", "TESTPROJ-1")
+    r = _cli(tmp_path, "extracted", "jira", "TESTPROJ-1", "--lines", "42", "--flag", "dense")
+    assert r.returncode == 0, r.stderr
+    assert q.read(q.synth_file("jira")) == ["42\tdense\tTESTPROJ-1"]
+
+def test_cli_next_synth_prints_metadata(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q._write(q.synth_file("jira"), ["42\tdense\tTESTPROJ-9"])
+    r = _cli(tmp_path, "next-synth", "5")
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.splitlines() == ["jira\t42\tdense\tTESTPROJ-9"]
+
+def test_cli_drop(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.enqueue("raw", "/abs/raw/style.css")
+    r = _cli(tmp_path, "drop", "raw", "/abs/raw/style.css")
+    assert r.returncode == 0, r.stderr
+    assert q.read(q.extract_file("raw")) == []
 
 def test_cli_status(tmp_path, monkeypatch):
     q = _q(tmp_path, monkeypatch)

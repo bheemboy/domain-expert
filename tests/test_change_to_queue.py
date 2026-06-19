@@ -141,7 +141,7 @@ def test_full_flow_git_run_drain(tmp_path, monkeypatch):
     assert queues.next_extract(10) == [(name, f)]
 
     queues.move_to_synth(name, f)                # extract phase
-    assert queues.next_synth(10) == [(name, f)]
+    assert queues.next_synth(10) == [(name, None, None, f)]
 
     queues.synthed(name, f)                      # synth phase
     assert queues.source_empty(name)
