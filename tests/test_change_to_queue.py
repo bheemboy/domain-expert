@@ -147,3 +147,28 @@ def test_full_flow_git_run_drain(tmp_path, monkeypatch):
     assert queues.source_empty(name)
     # State holds only the jira cursor; git left no trace.
     assert jira_cursor.get("TESTPROJ") is None
+
+
+def test_backfill_filters_ignored_tracked_files(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+
+    import importlib, check_for_changes, git_changes
+    importlib.reload(check_for_changes)
+
+    tracked = [
+        "src/app/user.py",
+        "local_modules/@agilent/common/bundles/x.umd.min.js",
+        "assets/logo.svg",
+        "src/app/billing.ts",
+    ]
+    monkeypatch.setattr(git_changes, "tracked_files", lambda _repo: tracked)
+    monkeypatch.setattr(check_for_changes.git_changes, "tracked_files", lambda _repo: tracked)
+
+    kept, ignored = check_for_changes._backfill_identities([str(repo)])
+    kept_rel = sorted(str(Path(p).relative_to(repo)) for p in kept)
+    assert kept_rel == ["src/app/billing.ts", "src/app/user.py"]
+    # the min.js and svg were dropped by default rules
+    assert ignored.get("**/*.min.js") == 1
+    assert ignored.get("**/*.svg") == 1

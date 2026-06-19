@@ -52,6 +52,7 @@ from jira_utils import (
 )
 import config
 import git_changes
+import ignore
 import jira_cursor
 import queues
 import sources
@@ -186,20 +187,27 @@ def _expand_identities(args: list[str]) -> list[str]:
     return out
 
 
-def _backfill_identities(args: list[str]) -> list[str]:
-    """Expand --backfill repo args into every tracked file (absolute path). Each arg
-    is a configured source name (e.g. 'asv') or a path to a git repo. Unlike folder
-    expansion in --force, this uses git ls-files, so it lists tracked files only and
-    never recurses into .git/ or build artifacts."""
+def _backfill_identities(args: list[str]) -> tuple[list[str], dict[str, int]]:
+    """Expand --backfill repo args into every tracked file (absolute path), with
+    ignore-glob filtering applied to the repo-relative path. Each arg is a configured
+    source name (e.g. 'asv') or a path to a git repo. Returns (kept_abs_paths,
+    ignored_by_rule). Uses git ls-files, so it lists tracked files only and never
+    recurses into .git/ or build artifacts."""
     by_name = {name: path for path, name in sources.detect_repos()}
-    out: list[str] = []
+    globs = config.ignore_globs()
+    kept_abs: list[str] = []
+    ignored_total: dict[str, int] = {}
     for a in args:
         repo = by_name.get(a) or Path(a).resolve()
         if not (repo / ".git").is_dir():
             raise ValueError(
                 f"--backfill: {a!r} is not a configured source name or a git repo")
-        out.extend(str((repo / f).resolve()) for f in git_changes.tracked_files(repo))
-    return out
+        rels = list(git_changes.tracked_files(repo))
+        kept, ignored = ignore.partition(rels, globs)
+        kept_abs.extend(str((repo / f).resolve()) for f in kept)
+        for g, c in ignored.items():
+            ignored_total[g] = ignored_total.get(g, 0) + c
+    return kept_abs, ignored_total
 
 
 def _enqueue_identities(identities: list[str], dry_run: bool, verb: str) -> None:
