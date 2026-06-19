@@ -174,8 +174,10 @@ def run(check_jira: bool = True, check_git: bool = True) -> None:
 
 def _expand_identities(args: list[str]) -> list[str]:
     """Expand --force args into concrete identities: a Jira KEY stays as-is; a
-    directory expands to every file beneath it (recursive); a file path stays as-is.
-    Paths are resolved to absolute so source_of can map them."""
+    directory expands to every file beneath it (recursive), with ignore-glob filtering
+    applied to each repo-relative path; an explicitly named single file stays as-is
+    (explicit intent overrides ignores). Paths are resolved to absolute."""
+    globs = config.ignore_globs()
     out: list[str] = []
     for a in args:
         if sources.is_jira_key(a):
@@ -183,9 +185,14 @@ def _expand_identities(args: list[str]) -> list[str]:
             continue
         p = Path(a)
         if p.is_dir():
-            out.extend(str(f.resolve()) for f in sorted(p.rglob("*")) if f.is_file())
+            for f in sorted(p.rglob("*")):
+                if not f.is_file():
+                    continue
+                rel = sources.repo_relative(str(f))
+                if ignore.first_match(rel, globs) is None:
+                    out.append(str(f.resolve()))
         elif p.exists():
-            out.append(str(p.resolve()))
+            out.append(str(p.resolve()))   # named file — exempt
         else:
             out.append(a)   # not on disk — let source_of raise a clear error
     return out

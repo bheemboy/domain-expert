@@ -198,3 +198,23 @@ def test_detection_filters_ignored_changed_files(tmp_path, monkeypatch):
     name, paths = out[0]
     assert name == "asv"
     assert [Path(p).name for p in paths] == ["user.py"]  # svg filtered out
+
+
+def test_force_folder_expansion_filters_but_named_file_is_exempt(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "user.py").write_text("x=1\n")
+    (repo / "src" / "x.min.js").write_text("//min\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    # folder expansion: the .min.js is filtered out
+    expanded = check_for_changes._expand_identities([str(repo / "src")])
+    names = sorted(Path(p).name for p in expanded)
+    assert names == ["user.py"]
+
+    # explicitly named ignored file: exempt (explicit intent wins)
+    named = check_for_changes._expand_identities([str(repo / "src" / "x.min.js")])
+    assert [Path(p).name for p in named] == ["x.min.js"]
