@@ -13,10 +13,10 @@ confidence tag to use. Work from the wiki schema. Do not touch any manifest.
    leads: open the file before asserting. `wiki/index.md` stays canonical for
    whether a page exists; if qmd is unavailable, fall back to grep/index.md.
 2. For each path **in order**, run `python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" classify <path>`
-   → `<kind>\t<read_target>`, then read `<read_target>` and tag/cite by kind. First run
-   `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" read-note <path>`; if it prints a
-   non-empty triage note, treat it as a **focus hint** for where the business value sits
-   — but ALWAYS read `<read_target>` in full regardless; the note never replaces the read:
+   → `<kind>\t<read_target>`. Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" read-note <path>`;
+   if it prints a non-empty triage note, treat it as a **focus hint** for where the business
+   value sits — but ALWAYS read `<read_target>` in full regardless; the note never replaces the
+   read — then read `<read_target>` and tag/cite by kind:
    - `jira`  → read the import; tag `(ticket-only)`; cite `[<KEY>, YYYY-MM]`.
    - `doc`   → read the import (converted PDF/Office text); tag `(doc-stated)`; cite `[doc: <source>]` (its `source:` path).
    - `prose` → read the file **directly** (`.md`/`.txt`); tag `(doc-stated)`; cite `[doc: <repo-relative path>]`.

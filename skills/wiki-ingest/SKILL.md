@@ -35,7 +35,7 @@ Dispatch each `<source>\t<identity>` line on
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" extract-action <identity>`:
 
 - **`ready`** → `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity>`. Covers
-  code/prose and already-extracted imports from an interrupted run.
+  a Jira clean import already present from an interrupted run.
 - **`extract-doc`** → batch all doc paths; run `python "${CLAUDE_PLUGIN_ROOT}/scripts/extract_docs.py"
   <paths...>` once. Do NOT call `extracted` here — leave each doc in `.extract`. Once its
   import exists, `extract-action` returns `triage`, so the same loop re-picks it on its

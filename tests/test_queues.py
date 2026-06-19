@@ -250,3 +250,12 @@ def test_cli_status(tmp_path, monkeypatch):
     assert r.returncode == 0, r.stderr
     assert "pending_extract=1" in r.stdout
     assert "pending_synth=1" in r.stdout
+
+def test_enqueue_bump_back_clears_stale_note(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q._write(q.synth_file("raw"), ["10\troutine\t/abs/x.py"])
+    q.write_note("/abs/x.py", "stale hint from old version")
+    q.enqueue("raw", "/abs/x.py")   # changed again -> bump back to .extract
+    assert q.read(q.extract_file("raw")) == ["/abs/x.py"]
+    assert q.read(q.synth_file("raw")) == []
+    assert q.read_note("/abs/x.py") == ""

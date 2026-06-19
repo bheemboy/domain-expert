@@ -88,6 +88,7 @@ def enqueue(source: str, identity: str) -> None:
         return
     if in_synth(source, identity):
         _remove(synth_file(source), identity)
+        clear_note(identity)   # stale triage hint must not survive a re-detect
     _append(extract_file(source), identity)
 
 
