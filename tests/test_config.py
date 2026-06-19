@@ -150,3 +150,46 @@ def test_synth_tuning_override_merges_per_field(tmp_path, monkeypatch):
     assert t["code"]["small_lines"] == 400     # default preserved
     assert t["default_batch"] == 20            # overridden
     assert t["jira"]["solo_lines"] == 400      # untouched kind keeps defaults
+
+
+def test_ignore_globs_defaults_when_absent(tmp_path, monkeypatch):
+    _write(tmp_path, monkeypatch)  # config has no ignore: block
+    globs = config.ignore_globs()
+    assert "**/*.min.js" in globs
+    assert "**/node_modules/**" in globs
+    assert "**/*.svg" in globs
+    # no user entries means just the baked defaults
+    assert globs == config._IGNORE_DEFAULTS
+
+
+def _write_with_ignore(tmp_path, monkeypatch):
+    cfg = tmp_path / "wiki.config.yaml"
+    cfg.write_text(textwrap.dedent("""
+        project:
+          key: TESTPROJ
+          name: "Test Project"
+          config_dir: ~/.config/testproj-wiki
+        jira:
+          base_url: https://example.atlassian.net
+          jql: |
+            project = TESTPROJ
+        ignore:
+          - ac_portal/local_modules/**
+          - ac_ops/terraform/**
+          - "**/*.min.js"
+    """))
+    monkeypatch.setenv("WIKI_CONFIG", str(cfg))
+
+
+def test_ignore_globs_appends_user_entries_and_dedups(tmp_path, monkeypatch):
+    _write_with_ignore(tmp_path, monkeypatch)
+    globs = config.ignore_globs()
+    # defaults still present
+    assert "**/node_modules/**" in globs
+    # user subtrees appended after defaults
+    assert "ac_portal/local_modules/**" in globs
+    assert "ac_ops/terraform/**" in globs
+    # a user entry duplicating a default appears once, kept at its default position
+    assert globs.count("**/*.min.js") == 1
+    # defaults come before user-only entries
+    assert globs.index("**/node_modules/**") < globs.index("ac_portal/local_modules/**")

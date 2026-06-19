@@ -86,8 +86,8 @@ def test_backfill_enqueues_tracked_files_only(tmp_path, monkeypatch):
     name = sources.clean_name(repo)
     expected = [str((repo / "a.py").resolve()), str((repo / "sub" / "b.md").resolve())]
     # By configured source name and by path resolve to the same tracked-file set.
-    assert sorted(cfc._backfill_identities([name])) == sorted(expected)
-    assert sorted(cfc._backfill_identities([str(repo)])) == sorted(expected)
+    kept, _ = cfc._backfill_identities([name]); assert sorted(kept) == sorted(expected)
+    kept, _ = cfc._backfill_identities([str(repo)]); assert sorted(kept) == sorted(expected)
 
 
 def test_backfill_rejects_non_repo(tmp_path, monkeypatch):
@@ -147,3 +147,91 @@ def test_full_flow_git_run_drain(tmp_path, monkeypatch):
     assert queues.source_empty(name)
     # State holds only the jira cursor; git left no trace.
     assert jira_cursor.get("TESTPROJ") is None
+
+
+def test_backfill_filters_ignored_tracked_files(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+
+    import importlib, check_for_changes, git_changes
+    importlib.reload(check_for_changes)
+
+    tracked = [
+        "src/app/user.py",
+        "local_modules/@agilent/common/bundles/x.umd.min.js",
+        "assets/logo.svg",
+        "src/app/billing.ts",
+    ]
+    monkeypatch.setattr(git_changes, "tracked_files", lambda _repo: tracked)
+    monkeypatch.setattr(check_for_changes.git_changes, "tracked_files", lambda _repo: tracked)
+
+    kept, ignored = check_for_changes._backfill_identities([str(repo)])
+    kept_rel = sorted(str(Path(p).relative_to(repo)) for p in kept)
+    assert kept_rel == ["src/app/billing.ts", "src/app/user.py"]
+    # the min.js and svg were dropped by default rules
+    assert ignored.get("**/*.min.js") == 1
+    assert ignored.get("**/*.svg") == 1
+
+
+def test_detection_filters_ignored_changed_files(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "user.py").write_text("x = 1\n")
+    (repo / "logo.svg").write_text("<svg/>\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+
+    import importlib, check_for_changes, sources, git_changes
+    importlib.reload(check_for_changes)
+
+    monkeypatch.setattr(check_for_changes.sources, "detect_repos",
+                        lambda: [(repo, "asv")])
+    monkeypatch.setattr(check_for_changes.git_changes, "head_sha", lambda _r: "old")
+    monkeypatch.setattr(check_for_changes.git_changes, "fetch", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "pull_ff", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "changed_files",
+                        lambda _r, _b: ["src/user.py", "logo.svg"])
+
+    out = check_for_changes.scan_git_candidates()
+    assert len(out) == 1
+    name, paths = out[0]
+    assert name == "asv"
+    assert [Path(p).name for p in paths] == ["user.py"]  # svg filtered out
+
+
+def test_force_folder_expansion_filters_but_named_file_is_exempt(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "user.py").write_text("x=1\n")
+    (repo / "src" / "x.min.js").write_text("//min\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    # folder expansion: the .min.js is filtered out
+    expanded = check_for_changes._expand_identities([str(repo / "src")])
+    names = sorted(Path(p).name for p in expanded)
+    assert names == ["user.py"]
+
+    # explicitly named ignored file: exempt (explicit intent wins)
+    named = check_for_changes._expand_identities([str(repo / "src" / "x.min.js")])
+    assert [Path(p).name for p in named] == ["x.min.js"]
+
+
+def test_enqueue_identities_reports_ignored_summary(tmp_path, monkeypatch, capsys):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    ids = [str((repo / "src" / "user.py"))]
+    check_for_changes._enqueue_identities(
+        ids, dry_run=True, verb="enqueue",
+        ignored={"**/*.min.js": 3, "**/*.svg": 1})
+    out = capsys.readouterr().out
+    assert "would enqueue 1" in out
+    assert "ignored 4" in out
+    assert "**/*.min.js" in out  # by-rule breakdown present
