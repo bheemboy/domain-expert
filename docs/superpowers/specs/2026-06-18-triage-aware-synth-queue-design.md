@@ -87,6 +87,32 @@ Triage output per kept item:
 `skip` items are fast-forwarded: the pipeline calls `extracted` then `synthed`
 immediately so they never linger in a queue and leave no wiki trace.
 
+#### Concurrency
+
+Triage parallelizes exactly like the existing Jira extract, and for the same
+reason: **the subagents never write the queue — the orchestrator does.**
+
+- **Parallel, read-only judgment.** Triage Haiku agents run at `FANOUT=8`. Each
+  reads one file (read-only on the source) and **returns** its judgment
+  (`tier` + `flag` + optional `note`) in its final message. No subagent touches
+  a shared file, so there is no write contention.
+- **Serial, orchestrator-side queue writes.** After a full wave returns, the
+  orchestrator mutates the queue **serially**, in the original `next-extract`
+  order — preserving the chronological invariant (CLAUDE.md §4.3) the same way
+  Jira extract does. `queues.py` remains the single writer, invoked only by the
+  parent.
+- **Line count is stamped mechanically by the parent.** Haiku returns only the
+  judgment; the orchestrator computes `lines` itself (`wc -l`) when writing the
+  queue line. An LLM counting lines is unreliable and wasteful, and this shrinks
+  what each agent must return.
+
+`FANOUT=8` is inherited from Jira extract — a pragmatic round number balancing
+API concurrency caps, parent-context pressure when the wave returns, and the
+blast radius of a bad run, not a measured optimum. Triage work is tinier than
+extraction (read + one-word judgment), so it could likely run higher; matching
+the existing constant keeps the mental model simple and is a fine starting
+point to tune from.
+
 ### 2. Queue line format
 
 The synth queue line extends from `<identity>` to:
