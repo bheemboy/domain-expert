@@ -13,6 +13,7 @@ that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md
 - `/wiki-queue` — inspect pending counts only, no detection:
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status`.
 - `/wiki-queue all` — full detection pass (Jira + external repos), enqueue what changed.
+  Detection skips paths matching the `ignore:` globs (built-in junk defaults + the consumer repo's `ignore:` list); see `wiki.config.yaml`.
   Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py"`, then print status.
 - `/wiki-queue jira` — Jira-only detection (incl. first-time backlog when no cursor):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --jira`.
