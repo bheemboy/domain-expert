@@ -141,19 +141,21 @@ def _is_jira(path: str) -> bool:
 def extract_action(path: str) -> str:
     """What extraction a queued identity needs, for the ingest driver to dispatch on:
 
-      "extract-jira"   Jira key, no import yet      -> Haiku extract subagent
-      "reextract-jira" Jira import flagged escalate -> Sonnet re-extract subagent
-      "extract-doc"    binary doc, no import yet     -> extract_docs.py (mechanical)
-      "ready"          code/prose, OR a Jira/doc whose good import already exists
-                       -> no extraction; move straight to .synth (also = resumable)
+      "extract-jira"   Jira key, no import yet            -> Haiku extract subagent
+      "reextract-jira" Jira import flagged escalate       -> Sonnet re-extract subagent
+      "ready"          Jira/doc clean import already exists -> no work; move to .synth
+                       (only reached on an interrupted-run resume)
+      "extract-doc"    binary doc, no import yet          -> extract_docs.py (mechanical)
+      "triage"         code/prose (read directly), OR a doc whose converted import now
+                       exists -> Haiku triage subagent (skip-or-keep + lines + flag)
     """
     if _is_jira(path):
         if not has_import(path):
             return "extract-jira"
         return "reextract-jira" if is_escalated(path) else "ready"
     if is_doc(path):
-        return "extract-doc" if not has_import(path) else "ready"
-    return "ready"
+        return "extract-doc" if not has_import(path) else "triage"
+    return "triage"
 
 
 def main() -> None:
