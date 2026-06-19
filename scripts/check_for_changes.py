@@ -221,8 +221,10 @@ def _backfill_identities(args: list[str]) -> tuple[list[str], dict[str, int]]:
     return kept_abs, ignored_total
 
 
-def _enqueue_identities(identities: list[str], dry_run: bool, verb: str) -> None:
-    """Map each identity to its source and enqueue it (unless dry-run); print a count.
+def _enqueue_identities(identities: list[str], dry_run: bool, verb: str,
+                        ignored: dict[str, int] | None = None) -> None:
+    """Map each identity to its source and enqueue it (unless dry-run); print a kept
+    count and, when ignore rules dropped anything, an `ignored M (by rule …)` summary.
     Shared by --force and --backfill."""
     n = 0
     for identity in identities:
@@ -236,6 +238,9 @@ def _enqueue_identities(identities: list[str], dry_run: bool, verb: str) -> None
         n += 1
     done = f"would {verb}" if dry_run else f"{verb}d"
     print(f"{done} {n} identit{'y' if n == 1 else 'ies'}")
+    if ignored:
+        by_rule = ", ".join(f"{g}={c}" for g, c in sorted(ignored.items()))
+        print(f"ignored {sum(ignored.values())} file(s) by rule: {by_rule}")
 
 
 def main():
@@ -271,11 +276,11 @@ def main():
                   file=sys.stderr)
             sys.exit(2)
         try:
-            identities = _backfill_identities(args)
+            identities, ignored = _backfill_identities(args)
         except (ValueError, RuntimeError) as e:
             print(f"ERROR: {e}", file=sys.stderr)
             sys.exit(2)
-        _enqueue_identities(identities, dry_run, "enqueue")
+        _enqueue_identities(identities, dry_run, "enqueue", ignored)
         return
 
     explicit_select = any(f in flags for f in ["--code", "--jira"])

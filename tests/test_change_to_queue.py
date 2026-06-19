@@ -86,8 +86,8 @@ def test_backfill_enqueues_tracked_files_only(tmp_path, monkeypatch):
     name = sources.clean_name(repo)
     expected = [str((repo / "a.py").resolve()), str((repo / "sub" / "b.md").resolve())]
     # By configured source name and by path resolve to the same tracked-file set.
-    assert sorted(cfc._backfill_identities([name])) == sorted(expected)
-    assert sorted(cfc._backfill_identities([str(repo)])) == sorted(expected)
+    kept, _ = cfc._backfill_identities([name]); assert sorted(kept) == sorted(expected)
+    kept, _ = cfc._backfill_identities([str(repo)]); assert sorted(kept) == sorted(expected)
 
 
 def test_backfill_rejects_non_repo(tmp_path, monkeypatch):
@@ -218,3 +218,20 @@ def test_force_folder_expansion_filters_but_named_file_is_exempt(tmp_path, monke
     # explicitly named ignored file: exempt (explicit intent wins)
     named = check_for_changes._expand_identities([str(repo / "src" / "x.min.js")])
     assert [Path(p).name for p in named] == ["x.min.js"]
+
+
+def test_enqueue_identities_reports_ignored_summary(tmp_path, monkeypatch, capsys):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    ids = [str((repo / "src" / "user.py"))]
+    check_for_changes._enqueue_identities(
+        ids, dry_run=True, verb="enqueue",
+        ignored={"**/*.min.js": 3, "**/*.svg": 1})
+    out = capsys.readouterr().out
+    assert "would enqueue 1" in out
+    assert "ignored 4" in out
+    assert "**/*.min.js" in out  # by-rule breakdown present
