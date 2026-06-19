@@ -14,3 +14,25 @@ lint:
   flaggable_nouns: []
   brand_nouns: {{BRAND_TERMS_YAML_LIST}}
   era_terms: []    # optional list of retired era/version terms (e.g. ["v1", "legacy"])
+
+# Optional. Tunes how the synth phase batches and routes work. Everything here is
+# commented out: the pipeline ships with these exact defaults baked in, so you only
+# need a key if you want to override it after watching real ingests. Lines are raw
+# line counts; cutoffs differ per kind because the unit isn't equivalent across them.
+# synth_tuning:
+#   default_batch: 12       # items per batch when an item has no triage metadata
+#   jira:
+#     small_lines: 150      # below this: batch up to small_batch
+#     solo_lines: 400       # at/above this: one item per agent
+#     small_batch: 15
+#     mid_batch: 6          # batch size between small_lines and solo_lines
+#   doc:
+#     small_lines: 250
+#     solo_lines: 700
+#     small_batch: 15
+#     mid_batch: 4
+#   code:                   # also covers prose
+#     small_lines: 400
+#     solo_lines: 1500
+#     small_batch: 15
+#     mid_batch: 3
