@@ -172,3 +172,29 @@ def test_backfill_filters_ignored_tracked_files(tmp_path, monkeypatch):
     # the min.js and svg were dropped by default rules
     assert ignored.get("**/*.min.js") == 1
     assert ignored.get("**/*.svg") == 1
+
+
+def test_detection_filters_ignored_changed_files(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "user.py").write_text("x = 1\n")
+    (repo / "logo.svg").write_text("<svg/>\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+
+    import importlib, check_for_changes, sources, git_changes
+    importlib.reload(check_for_changes)
+
+    monkeypatch.setattr(check_for_changes.sources, "detect_repos",
+                        lambda: [(repo, "asv")])
+    monkeypatch.setattr(check_for_changes.git_changes, "head_sha", lambda _r: "old")
+    monkeypatch.setattr(check_for_changes.git_changes, "fetch", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "pull_ff", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "changed_files",
+                        lambda _r, _b: ["src/user.py", "logo.svg"])
+
+    out = check_for_changes.scan_git_candidates()
+    assert len(out) == 1
+    name, paths = out[0]
+    assert name == "asv"
+    assert [Path(p).name for p in paths] == ["user.py"]  # svg filtered out

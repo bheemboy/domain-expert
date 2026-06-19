@@ -131,7 +131,11 @@ def scan_git_candidates() -> list[tuple[str, list[str]]]:
         except RuntimeError as e:
             print(f"  Warning: {name}: {e} — skipping.", file=sys.stderr)
             continue
-        abs_paths = [str(repo_path / f) for f in files if (repo_path / f).exists()]
+        globs = config.ignore_globs()
+        kept, ignored = ignore.partition(files, globs)
+        abs_paths = [str(repo_path / f) for f in kept if (repo_path / f).exists()]
+        if ignored:
+            print(f"  {name}: ignored {sum(ignored.values())} file(s) by rule")
         if not abs_paths:
             print(f"  {name}: up to date.")
             continue
