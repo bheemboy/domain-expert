@@ -4,6 +4,7 @@ Reads wiki.config.yaml (repo root, or $WIKI_CONFIG) and exposes typed
 accessors. No caching: the file is tiny and re-reading keeps tests isolated.
 """
 
+import copy
 import os
 from pathlib import Path
 
@@ -79,3 +80,26 @@ def source_repos() -> list[Path]:
 
 def lint_config() -> dict:
     return load().get("lint") or {}
+
+
+_SYNTH_TUNING_DEFAULTS = {
+    "jira": {"small_lines": 150, "solo_lines": 400, "small_batch": 15, "mid_batch": 6},
+    "doc":  {"small_lines": 250, "solo_lines": 700, "small_batch": 15, "mid_batch": 4},
+    "code": {"small_lines": 400, "solo_lines": 1500, "small_batch": 15, "mid_batch": 3},
+    "default_batch": 12,
+}
+
+
+def synth_tuning() -> dict:
+    """Per-kind synth batching cutoffs. Code-baked defaults, optionally overridden by
+    a `synth_tuning:` block in wiki.config.yaml. Absent keys fall back to defaults, so
+    a config with no block (or no key) reproduces today's behavior. The `code` bucket
+    covers both `code` and `prose` kinds."""
+    merged = copy.deepcopy(_SYNTH_TUNING_DEFAULTS)
+    override = load().get("synth_tuning") or {}
+    for kind, vals in override.items():
+        if isinstance(vals, dict) and isinstance(merged.get(kind), dict):
+            merged[kind].update(vals)
+        else:
+            merged[kind] = vals
+    return merged
