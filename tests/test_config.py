@@ -113,3 +113,40 @@ def test_key_of_uses_configured_prefix(tmp_path, monkeypatch):
         else:
             os.environ.pop("WIKI_CONFIG", None)
         importlib.reload(ingest_state)
+
+
+def test_synth_tuning_defaults_when_absent(tmp_path, monkeypatch):
+    _write(tmp_path, monkeypatch)  # config has no synth_tuning: block
+    t = config.synth_tuning()
+    assert t["default_batch"] == 12
+    assert t["code"]["solo_lines"] == 1500
+    assert t["jira"]["small_lines"] == 150
+    assert t["doc"]["solo_lines"] == 700
+
+
+def _write_with_tuning(tmp_path, monkeypatch):
+    cfg = tmp_path / "wiki.config.yaml"
+    cfg.write_text(textwrap.dedent("""
+        project:
+          key: TESTPROJ
+          name: "Test Project"
+          config_dir: ~/.config/testproj-wiki
+        jira:
+          base_url: https://example.atlassian.net
+          jql: |
+            project = TESTPROJ
+        synth_tuning:
+          code:
+            solo_lines: 999
+          default_batch: 20
+    """))
+    monkeypatch.setenv("WIKI_CONFIG", str(cfg))
+
+
+def test_synth_tuning_override_merges_per_field(tmp_path, monkeypatch):
+    _write_with_tuning(tmp_path, monkeypatch)
+    t = config.synth_tuning()
+    assert t["code"]["solo_lines"] == 999      # overridden
+    assert t["code"]["small_lines"] == 400     # default preserved
+    assert t["default_batch"] == 20            # overridden
+    assert t["jira"]["solo_lines"] == 400      # untouched kind keeps defaults

@@ -35,10 +35,22 @@ Dispatch each `<source>\t<identity>` line on
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" extract-action <identity>`:
 
 - **`ready`** → `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity>`. Covers
-  code/prose and already-extracted imports from an interrupted run.
+  a Jira clean import already present from an interrupted run.
 - **`extract-doc`** → batch all doc paths; run `python "${CLAUDE_PLUGIN_ROOT}/scripts/extract_docs.py"
-  <paths...>` once; on success run `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <path>`
-  for each (`<source>` from the `next-extract` line).
+  <paths...>` once. Do NOT call `extracted` here — leave each doc in `.extract`. Once its
+  import exists, `extract-action` returns `triage`, so the same loop re-picks it on its
+  next pass and triages the converted markdown like any other kept source.
+- **`triage`** → spawn one Haiku subagent per identity (Agent tool,
+  `subagent_type: general-purpose`, `model: haiku`) with `triage-prompt.md`
+  (substitute `<identity>`). ≤FANOUT in parallel in one message; wait for all. The
+  subagents are read-only and write nothing — you act on their return lines after the
+  whole wave returns, in the original `next-extract` order:
+  - `KEEP | <flag> | <note>` → compute the line count mechanically:
+    `wc -l < "$(python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" classify <identity> | cut -f2)"`;
+    if the note is not `-`, `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" write-note <identity> <note>`;
+    then `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity> --lines <N> --flag <flag>`.
+  - `SKIP | <reason>` → `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" drop <source> <identity>` (discarded, never synthesized).
+  - `FAILED` → retry once; if it fails again, leave pending and continue.
 - **`extract-jira`** → spawn one Haiku subagent per key (Agent tool,
   `subagent_type: general-purpose`, `model: haiku`) with `extract-prompt.md`
   (substitute `<KEY>`). ≤FANOUT in parallel in a single message; wait for all.
@@ -49,7 +61,9 @@ Dispatch each `<source>\t<identity>` line on
 After a full wave returns:
 
 - `EXTRACTED`/`EMPTY` → `python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --stamp-hash`, then
-  `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted jira <KEY>`.
+  stamp the import's length and mark extracted:
+  `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted jira <KEY> --lines "$(wc -l < "$(python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" import-path <KEY>)")" --flag routine`.
+  (Jira imports default to `routine`; the density flag is a code/prose/doc signal.)
 - `ESCALATE` → leave in `.extract` (do NOT call `extracted`); auto-swept as
   `reextract-jira` on next read.
 - `FAILED` → retry once; if it fails again, leave pending and continue.
@@ -61,7 +75,10 @@ so newer supersedes older (CLAUDE.md §4.3).
 
 ## Phase 2 — Synthesize (serial)
 
-`DIGEST_BATCH=12`, `LINT_EVERY=20`.
+`LINT_EVERY=20`. Batch sizes and model routing come from
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/config.py"`-backed tuning
+(`config.synth_tuning()`); a queue line with no metadata falls back to a batch of
+`default_batch` (12) on Sonnet — today's behavior.
 
 **Invariants:** STRICTLY SERIALIZED — exactly one subagent in flight, ever. Synth
 and lint subagents share `wiki/`, `index.md`, `log.md`; overlap corrupts them.
@@ -76,8 +93,26 @@ the queue front-to-back (oldest → newest).
 Run the start-of-run index refresh, then loop until budget reached or
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" next-synth <N>` is empty:
 
-1. Spawn ONE Sonnet subagent (`model: sonnet`) with `synth-prompt.md` and the
-   batch of identities. Wait.
+1. Read the next slice: `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" next-synth <N>`
+   → lines of `<source>\t<lines>\t<flag>\t<identity>`. Form ONE batch from the FRONT of
+   this slice under these rules, then spawn exactly one subagent for it:
+
+   - **Homogeneous by kind.** Determine each item's kind via
+     `python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" classify <identity>` (first field;
+     `jira`/`doc`/`code`/`prose`). Map `prose`→the `code` bucket. A batch never crosses a
+     kind boundary — stop the batch at the first item of a different kind.
+   - **Per-kind size cutoffs** from `synth_tuning()[<bucket>]` (`small_lines`,
+     `solo_lines`, `small_batch`, `mid_batch`):
+     - any item with `<lines>` empty (no metadata) → batch up to `default_batch`, Sonnet.
+     - `lines < small_lines` → batch up to `small_batch`.
+     - `small_lines ≤ lines < solo_lines` → batch up to `mid_batch`.
+     - `lines ≥ solo_lines` → solo (batch of 1).
+     A batch is the longest run of same-kind items, in queue order, whose largest member's
+     tier allows it, capped at that tier's batch count.
+   - **Model by flag, not size.** If ANY item in the formed batch is flagged `dense`,
+     make it a solo batch (1 item) and use `model: opus`. Otherwise `model: sonnet`.
+
+   Spawn ONE subagent (`synth-prompt.md` + the batch identities) at the chosen model. Wait.
 2. Act:
    - `SYNTHED | completed: <id> ...` → for each id run
      `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" synthed <source> <id>`.

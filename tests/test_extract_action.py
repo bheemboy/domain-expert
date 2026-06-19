@@ -39,18 +39,18 @@ def test_doc_no_digest_needs_extract(tmp_path, monkeypatch):
     assert ingest_state.extract_action("docs/spec.pdf") == "extract-doc"
 
 
-def test_doc_with_digest_is_ready(tmp_path, monkeypatch):
+def test_doc_with_digest_is_triage(tmp_path, monkeypatch):
     monkeypatch.setenv("IMPORTS_DIR", str(tmp_path))
     ip = ingest_state.import_path("docs/spec.pdf")
     ip.parent.mkdir(parents=True, exist_ok=True)
     ip.write_text("---\nkey: x\n---\nbody\n")
-    assert ingest_state.extract_action("docs/spec.pdf") == "ready"
+    assert ingest_state.extract_action("docs/spec.pdf") == "triage"
 
 
-def test_code_and_prose_are_ready(tmp_path, monkeypatch):
+def test_code_and_prose_are_triage(tmp_path, monkeypatch):
     monkeypatch.setenv("IMPORTS_DIR", str(tmp_path))
-    assert ingest_state.extract_action("src/main.py") == "ready"
-    assert ingest_state.extract_action("docs/readme.md") == "ready"
+    assert ingest_state.extract_action("src/main.py") == "triage"
+    assert ingest_state.extract_action("docs/readme.md") == "triage"
 
 
 def _cli(tmp_path, ident):
@@ -61,10 +61,10 @@ def _cli(tmp_path, ident):
     )
 
 
-def test_extract_action_cli_ready(tmp_path):
+def test_extract_action_cli_triage(tmp_path):
     out = _cli(tmp_path, "src/main.py")
     assert out.returncode == 0
-    assert out.stdout.strip() == "ready"
+    assert out.stdout.strip() == "triage"
 
 
 def test_extract_action_cli_jira_key(tmp_path):
