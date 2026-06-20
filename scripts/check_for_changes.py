@@ -174,10 +174,10 @@ def run(check_jira: bool = True, check_git: bool = True) -> None:
 
 def _expand_identities(args: list[str]) -> list[str]:
     """Expand --force args into concrete identities: a Jira KEY stays as-is; a
-    directory expands to every file beneath it (recursive), with ignore-glob filtering
-    applied to each repo-relative path; an explicitly named single file stays as-is
-    (explicit intent overrides ignores). Paths are resolved to absolute."""
-    globs = config.ignore_globs()
+    directory expands to every file beneath it (recursive), UNFILTERED; an explicitly
+    named single file stays as-is. --force is "explicit intent wins": unlike detection
+    and --backfill, it applies NO ignore-glob filtering — files and folders behave the
+    same. Paths are resolved to absolute."""
     out: list[str] = []
     for a in args:
         if sources.is_jira_key(a):
@@ -186,13 +186,10 @@ def _expand_identities(args: list[str]) -> list[str]:
         p = Path(a)
         if p.is_dir():
             for f in sorted(p.rglob("*")):
-                if not f.is_file():
-                    continue
-                rel = sources.repo_relative(str(f))
-                if ignore.first_match(rel, globs) is None:
+                if f.is_file():
                     out.append(str(f.resolve()))
         elif p.exists():
-            out.append(str(p.resolve()))   # named file — exempt
+            out.append(str(p.resolve()))   # named file
         else:
             out.append(a)   # not on disk — let source_of raise a clear error
     return out
@@ -222,7 +219,8 @@ def _backfill_identities(args: list[str]) -> tuple[list[str], dict[str, int]]:
 
 
 def _enqueue_identities(identities: list[str], dry_run: bool, verb: str,
-                        ignored: dict[str, int] | None = None) -> None:
+                        ignored: dict[str, int] | None = None,
+                        forced: bool = False) -> None:
     """Map each identity to its source and enqueue it (unless dry-run); print a kept
     count and, when ignore rules dropped anything, an `ignored M (by rule …)` summary.
     Shared by --force and --backfill."""
@@ -235,6 +233,8 @@ def _enqueue_identities(identities: list[str], dry_run: bool, verb: str,
             sys.exit(2)
         if not dry_run:
             queues.enqueue(source, identity)
+            if forced:
+                queues.mark_forced(identity)
         n += 1
     done = f"would {verb}" if dry_run else f"{verb}d"
     print(f"{done} {n} identit{'y' if n == 1 else 'ies'}")
@@ -265,7 +265,7 @@ def main():
         if not args:
             print("ERROR: --force requires at least one KEY, path, or folder", file=sys.stderr)
             sys.exit(2)
-        _enqueue_identities(_expand_identities(args), dry_run, "force-enqueue")
+        _enqueue_identities(_expand_identities(args), dry_run, "force-enqueue", forced=True)
         return
 
     # --backfill: enqueue every tracked file of the given git source repo(s), named by
