@@ -55,8 +55,10 @@ Dispatch each `<source>\t<identity>` line on
   may NOT be dropped. Spawn one Haiku subagent per identity with `forced-triage-prompt.md`
   prepended to `triage-prompt.md` (same prepend pattern as `escalation-prompt.md` + `extract-prompt.md`).
   Act on the return line in `next-extract` order:
-  - `KEEP | <flag> | <note>` → exactly as `triage`: `wc -l` the classify `read_target`; if the note
-    is not `-`, `write-note`; then `queues.py extracted <source> <identity> --lines <N> --flag <flag>`
+  - `KEEP | <flag> | <note>` → compute the line count mechanically:
+    `wc -l < "$(python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" classify <identity> | cut -f2)"`;
+    if the note is not `-`, `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" write-note <identity> <note>`;
+    then `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity> --lines <N> --flag <flag>`
     (which clears the forced marker).
   - `SKIP | <reason>` (a forced item must never be dropped) → coerce to `KEEP | routine | <reason>`
     and take the KEEP path above. Do NOT call `drop`.
