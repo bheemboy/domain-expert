@@ -45,6 +45,8 @@ lint:
 # only repo-specific trees the defaults miss — most commonly a compiled library that is
 # committed into the source tree. Semantics: `**/` = any depth, `*` = within one path
 # segment, `?` = one char; a pattern without a leading `**/` is anchored at the repo root.
+# Escape hatch: a genuinely valuable ignored asset (e.g. an architecture PNG) can be
+# forced in via `/wiki-queue <path>` or `/wiki-queue <folder>`, which bypasses these globs.
 # ignore:
 #   - ac_portal/local_modules/**     # committed compiled Angular lib (vendored)
 #   - ac_ops/terraform/**            # infra-as-code, not product-domain behavior
