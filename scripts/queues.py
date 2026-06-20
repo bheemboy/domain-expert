@@ -103,6 +103,7 @@ def move_to_synth(source: str, identity: str,
     else:
         synth_line = f"{lines if lines is not None else ''}\t{flag or ''}\t{identity}"
     _append(synth_file(source), synth_line)
+    clear_forced(identity)
 
 
 def drop(source: str, identity: str) -> None:
@@ -110,6 +111,7 @@ def drop(source: str, identity: str) -> None:
     from .extract and clears any note; it never reaches .synth and leaves no wiki trace."""
     _remove(extract_file(source), identity)
     clear_note(identity)
+    clear_forced(identity)
 
 
 def note_file(identity: str) -> Path:
@@ -134,6 +136,29 @@ def read_note(identity: str) -> str:
 
 def clear_note(identity: str) -> None:
     p = note_file(identity)
+    if p.is_file():
+        p.unlink()
+
+
+def forced_file(identity: str) -> Path:
+    """State-dir side-car flag marking an identity as explicitly force-enqueued (keyed by
+    a hash so a file-path identity is filesystem-safe). Its presence makes triage no-skip."""
+    h = hashlib.sha1(identity.encode("utf-8")).hexdigest()[:16]
+    return config.state_dir() / "forced" / f"{h}.flag"
+
+
+def mark_forced(identity: str) -> None:
+    p = forced_file(identity)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("1\n", encoding="utf-8")
+
+
+def is_forced(identity: str) -> bool:
+    return forced_file(identity).is_file()
+
+
+def clear_forced(identity: str) -> None:
+    p = forced_file(identity)
     if p.is_file():
         p.unlink()
 
@@ -229,6 +254,15 @@ def main() -> None:
         sys.exit(0)
     if cmd == "read-note":        # read-note <identity>
         print(read_note(a[1]))
+        sys.exit(0)
+    if cmd == "mark-forced":      # mark-forced <identity>
+        mark_forced(a[1])
+        sys.exit(0)
+    if cmd == "is-forced":        # is-forced <identity>  -> prints 1/0
+        print("1" if is_forced(a[1]) else "0")
+        sys.exit(0)
+    if cmd == "clear-forced":     # clear-forced <identity>
+        clear_forced(a[1])
         sys.exit(0)
     if cmd == "synthed":          # synthed <source> <identity>
         synthed(a[1], a[2])
