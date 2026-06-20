@@ -18,6 +18,7 @@ import re
 import sys
 from pathlib import Path
 import config
+import queues
 from sources import repo_root_of, repo_relative  # canonical home: sources.py
 
 _PROJECT_KEY = config.project_key()
@@ -148,14 +149,17 @@ def extract_action(path: str) -> str:
       "extract-doc"    binary doc, no import yet          -> extract_docs.py (mechanical)
       "triage"         code/prose (read directly), OR a doc whose converted import now
                        exists -> Haiku triage subagent (skip-or-keep + lines + flag)
+      "triage-forced"  forced item: triage runs for guidance but may not skip
     """
     if _is_jira(path):
         if not has_import(path):
             return "extract-jira"
         return "reextract-jira" if is_escalated(path) else "ready"
     if is_doc(path):
-        return "extract-doc" if not has_import(path) else "triage"
-    return "triage"
+        if not has_import(path):
+            return "extract-doc"
+        return "triage-forced" if queues.is_forced(path) else "triage"
+    return "triage-forced" if queues.is_forced(path) else "triage"
 
 
 def main() -> None:
