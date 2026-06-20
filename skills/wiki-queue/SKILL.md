@@ -24,8 +24,8 @@ that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --backfill <repo…>`.
 - `/wiki-queue <path|folder> …` — enqueue a raw/ drop or ad-hoc paths WITHOUT draining
   (folders expand recursively). **Explicit intent wins**: enqueues every file unfiltered
-  (folders included, any extension), marks them undroppable by triage (in contrast with
-  detection and backfill, which apply `ignore:` globs):
+  (folders included, any extension), marks them undroppable by triage though still reviewed
+  for guidance (in contrast with detection and backfill, which apply `ignore:` globs).
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`.
 - `/wiki-queue --dry-run` — preview detection (fetch, no pull/queue/state writes):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --dry-run`.

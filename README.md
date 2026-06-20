@@ -120,10 +120,10 @@ built-in set of junk defaults (`node_modules/` and `vendor/` trees, minified/bun
 output, `*.d.ts`, lockfiles, binary assets, styling, certs) plus any patterns you add under
 `ignore:` in `wiki.config.yaml`. Filtering applies only when a folder, repo, or detection pass
 expands to many files; naming a single file's own path always enqueues that file, even if it
-matches a glob. **Override**: `/wiki-queue <path|folder>` (`--force`) is explicit intent
-wins — it skips the ignore filter entirely (folders included) and marks forced items
-undroppable by triage, though they are still reviewed for guidance. Use it for genuinely
-valuable assets or images. Run a queue command with `--dry-run` to preview the kept-vs-ignored split.
+matches a glob. Run a queue command with `--dry-run` to preview the kept-vs-ignored split.
+**Override**: `/wiki-queue <path|folder>` with `--force` follows "explicit intent wins" semantics —
+it skips the ignore filter entirely (folders included) and marks forced items undroppable by
+triage, though they are still reviewed for guidance. Use it for genuinely valuable assets or images.
 
 ## First-time priming
 
