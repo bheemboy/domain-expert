@@ -51,6 +51,16 @@ Dispatch each `<source>\t<identity>` line on
     then `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity> --lines <N> --flag <flag>`.
   - `SKIP | <reason>` → `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" drop <source> <identity>` (discarded, never synthesized).
   - `FAILED` → retry once; if it fails again, leave pending and continue.
+- **`triage-forced`** → identical to `triage`, but the identity was explicitly force-enqueued and
+  may NOT be dropped. Spawn one Haiku subagent per identity with `forced-triage-prompt.md`
+  prepended to `triage-prompt.md` (same prepend pattern as `escalation-prompt.md` + `extract-prompt.md`).
+  Act on the return line in `next-extract` order:
+  - `KEEP | <flag> | <note>` → exactly as `triage`: `wc -l` the classify `read_target`; if the note
+    is not `-`, `write-note`; then `queues.py extracted <source> <identity> --lines <N> --flag <flag>`
+    (which clears the forced marker).
+  - `SKIP | <reason>` (a forced item must never be dropped) → coerce to `KEEP | routine | <reason>`
+    and take the KEEP path above. Do NOT call `drop`.
+  - `FAILED` → retry once; if it fails again, leave pending and continue.
 - **`extract-jira`** → spawn one Haiku subagent per key (Agent tool,
   `subagent_type: general-purpose`, `model: haiku`) with `extract-prompt.md`
   (substitute `<KEY>`). ≤FANOUT in parallel in a single message; wait for all.
