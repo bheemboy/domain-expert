@@ -122,10 +122,12 @@ output, `*.d.ts`, lockfiles, binary assets, styling, certs) plus any patterns yo
 expands to many files; naming a single file's own path always enqueues that file, even if it
 matches a glob. Run a queue command with `--dry-run` to preview the kept-vs-ignored split.
 
-**Override:** `/wiki-queue <path|folder>` with `--force` follows "explicit intent wins" semantics —
-it skips the ignore filter entirely (folders included, any extension) and marks forced items
-undroppable by triage, though they are still reviewed for guidance. Use it for genuinely
-valuable assets or images.
+**Override (force-enqueue).** Force-enqueuing bypasses the ignore filter entirely — every file
+is queued, folders included, any extension — and the forced items are never dropped by triage.
+(Triage still reads each one to flag density and add a focus note; it just cannot skip it.) Use
+this for genuinely valuable assets or images. Two commands force-enqueue, and both expand folders
+recursively: `/wiki-queue <path|folder>` queues only, while `/wiki-ingest <path|folder>` queues
+and then ingests.
 
 ## First-time priming
 

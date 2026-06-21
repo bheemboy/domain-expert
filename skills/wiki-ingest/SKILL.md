@@ -15,9 +15,10 @@ optional detection → parallel extract → serialized synthesize. Schema: `CLAU
 
 - `/wiki-ingest` — drain all pending (extract ≤all, then synth ≤all).
 - `/wiki-ingest <N>` — per-phase budget N (extract ≤N, then synth ≤N).
-- `/wiki-ingest <path|folder> …` — one-step convenience: enqueue the paths
-  (`python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`,
-  folders expand recursively), then drain all.
+- `/wiki-ingest <path|folder> …` — one-step convenience: force-enqueue the paths
+  (`python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`, folders
+  expand recursively — unfiltered and undroppable by triage, same as `/wiki-queue <path>`),
+  then drain all.
 
 **Cold-start (the no-path forms only).** Before draining, run
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status`; if
