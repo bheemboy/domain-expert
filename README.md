@@ -67,9 +67,6 @@ step 1 and do steps 2 and 3 for your checkout.
    `/wiki-ingest` refreshes it at the start and end of a run; `/wiki-lint` refreshes it at
    the start.
 
-Then prime your sources (see [First-time priming](#first-time-priming)) and run
-`/wiki-ingest`.
-
 ## Command reference
 
 Every task runs from a slash command; there are no direct `python scripts/…` calls.
