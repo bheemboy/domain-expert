@@ -16,7 +16,7 @@ no config → **bootstrap**; config present → **upgrade**.
    `project = <JIRA_KEY> AND statusCategory = Done`; the answer fills
    `{{JIRA_JQL}}` — if the user accepts the default, substitute the literal string
    `project = <JIRA_KEY> AND statusCategory = Done` with the real key in place of
-   `<JIRA_KEY>`; **do NOT include `ORDER BY` in the configured JQL** — detection
+   `<JIRA_KEY>`; **do NOT include `ORDER BY` in the configured JQL** — the source scan
    (`build_jql` in `check_for_changes.py`) appends ` ORDER BY Updated ASC`
    automatically, so a user-supplied `ORDER BY` would produce malformed double-ORDER-BY
    JQL), source repo paths, what counts as business-relevant, domain seed acronyms,

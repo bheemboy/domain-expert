@@ -1,6 +1,6 @@
 ---
 name: wiki-ingest
-description: Drain the wiki work queues (extract → synth) into the wiki. Use to ingest queued Jira/docs/code. Detection and queue inspection live in wiki-queue.
+description: Drain the wiki work queues (extract → synth) into the wiki. Use to ingest queued Jira/docs/code. Source scans and queue inspection live in wiki-queue.
 ---
 
 # wiki-ingest (extract → synthesize)
@@ -8,7 +8,7 @@ description: Drain the wiki work queues (extract → synth) into the wiki. Use t
 ## Role
 
 Orchestrate the full ingest pipeline over the per-source queues (`scripts/queues.py`):
-optional detection → parallel extract → serialized synthesize. Schema: `CLAUDE.md`
+optional source scan → parallel extract → serialized synthesize. Schema: `CLAUDE.md`
 §1, §3, §4, §5, §6, §7.
 
 ## Argument forms
@@ -24,8 +24,8 @@ optional detection → parallel extract → serialized synthesize. Schema: `CLAU
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status`; if
 `pending_extract=0 pending_synth=0`, run
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py"` first. If still empty,
-report "nothing to do" and stop. If non-empty on entry, drain without detecting.
-For explicit/forced detection, scoped detection, backfill, or status, use `/wiki-queue`.
+report "nothing to do" and stop. If non-empty on entry, drain without scanning.
+For force-enqueue, a scoped source scan, backfill, or status, use `/wiki-queue`.
 
 ## Phase 1 — Extract (parallel)
 
