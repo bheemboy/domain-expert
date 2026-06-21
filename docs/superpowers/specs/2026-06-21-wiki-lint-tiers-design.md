@@ -160,6 +160,11 @@ everything since the last lint and so should advance the watermark like any othe
   (every N + end of run), writing `lint | auto`. Reference the moved prompt path.
 - `schema/CLAUDE.md.tmpl` — §5 lint policy (delta vs full, scope, log-as-watermark); §6
   log vocabulary (`lint | auto|manual`, `lint --full`).
+- `README.md` — command table: revise the `/wiki-lint` row (now **delta** by default, not
+  "full health check"), add a `/wiki-lint --full` row (exhaustive whole-wiki audit, run
+  rarely), and keep `/wiki-lint mechanical`. Update the ingest/lint description so the
+  every-20 whole-wiki gate reads as the per-run delta gate, and adjust the qmd-refresh note
+  (line ~67) if its wording implies whole-wiki lint.
 - `.claude-plugin/plugin.json` and `marketplace.json` — version bump (kept in sync).
 - `tests/` — cover the scope resolver (log parse picks last `lint` by position not date;
   neighbor expansion; shard partition by line budget).
