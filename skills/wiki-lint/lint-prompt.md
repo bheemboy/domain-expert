@@ -1,5 +1,11 @@
 # LINT PROMPT (Opus lint subagent)
 
+Canonical semantic-lint prompt. Both `wiki-lint` (standalone) and the `wiki-ingest`
+synth lint gate pass this file's body to the Opus lint subagent — edit it here, in
+one place, never inline in a SKILL.md.
+
+---
+
 Semantic health-check of the wiki (`wiki/`) per `CLAUDE.md` §5 Lint.
 Mechanical output from `scripts/lint_wiki.py` is below. Fix safe mechanical issues,
 then run the semantic passes below. Do not treat these as product-specific checks;
@@ -68,6 +74,16 @@ Mandatory semantic passes:
 6. **Concept structure.** Check for concepts mentioned but lacking a page, pages
    that now cover two concepts and should split, and contradictions between pages.
 
+7. **Lint-config suggestions (advisory).** As you check renames (passes 1-3), note any
+   *genuine product-noun* rename whose retired name isn't yet policed by the lint config
+   (`wiki.config.yaml` `lint.flaggable_nouns` / `brand_nouns`). Propose the **category
+   noun** to add (e.g. a renamed `"… Cabinet"` → suggest `Cabinet`; a retired
+   `*-<brand>-Instrument` → suggest the old brand token). **Use judgment** — ignore the
+   junk the `→`-harvester catches (version bumps, error messages, file paths, prose).
+   This is how a project (especially a fresh one with an empty `lint:` section) grows its
+   config from observed renames instead of guessing up front. **Surface the proposal to
+   the human; do NOT edit `wiki.config.yaml` yourself** — it is human-curated config.
+
 - **Auto-fix** only safe, unambiguous issues (missing cross-link, broken link
   target, obvious duplicate merge, index/glossary summary drift, clearly stale
   unscoped old claim where the replacement is explicit).
@@ -78,3 +94,5 @@ Mandatory semantic passes:
   - `CLEAN | checked: <pages/passes>; residual-risk: <short note>`
   - `FIXED | <short list>; checked: <pages/passes>; residual-risk: <short note>`
   - `BLOCKED | <issues needing human judgment>; checked: <pages/passes>`
+  If pass 7 produced any, append `; lint-config: add <noun>, <noun> to <list>` to the
+  return line (a proposal for the human, not a change you made).

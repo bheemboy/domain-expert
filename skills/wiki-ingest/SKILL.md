@@ -134,8 +134,9 @@ Run the start-of-run index refresh, then loop until budget reached or
 3. **Lint gate** — after every `LINT_EVERY` synthesized and once at end, only when
    no synth subagent is running:
    a. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"`.
-   b. Spawn one Opus subagent (`model: opus`) with `lint-prompt.md` and the
-      mechanical output. Wait. `CLEAN`/`FIXED` → continue; `BLOCKED` → STOP.
+   b. Spawn one Opus subagent (`model: opus`) with the canonical lint prompt
+      `${CLAUDE_PLUGIN_ROOT}/skills/wiki-lint/lint-prompt.md` and the mechanical
+      output. Wait. `CLEAN`/`FIXED` → continue; `BLOCKED` → STOP.
 
 ## Report
 
