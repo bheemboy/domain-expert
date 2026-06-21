@@ -19,6 +19,10 @@ These terms describe the model:
 - **Queues**. Per-source `extract` and `synth` files under `<config_dir>/state/`
   (machine-local). An identity lives in exactly one file at a time, and its location is its
   state.
+- **Detection**. The scan that finds new or changed source items and queues them. It is
+  incremental: each run remembers where it left off, so it picks up only what changed since
+  the last run. Jira is scanned with your JQL; each git repo is scanned across the commits a
+  `git pull` brings in.
 - **Repo discovery**. The scripts walk up from the working directory to the nearest
   `wiki.config.yaml` to find the wiki repo (override with `$WIKI_CONFIG`). One installed
   plugin serves any wiki repo you `cd` into.
@@ -113,7 +117,7 @@ Commands are grouped by skill.
 | `/wiki-queue backfill <repo> …` | Enqueues a repo's git-tracked files via `git ls-files`, so gitignored files and `.git/` internals are skipped. It also applies the `ignore:` globs (see [Ignore filtering](#ignore-filtering) below). It lists tracked files only, so it never picks up untracked files, unlike the force-enqueue forms above. Name a repo by its `wiki.config.yaml` source name (for example, `my-project`) or by path, and pass several to backfill more than one at once. Run it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
 | `/wiki-queue --dry-run` | Previews what detection would enqueue: it fetches, but does not pull, queue, or write state. |
 
-Detection is incremental and idempotent; running it with nothing new does nothing.
+Re-running detection when nothing has changed does nothing, so it is always safe to repeat.
 
 ### Ignore filtering
 
