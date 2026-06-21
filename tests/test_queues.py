@@ -280,8 +280,11 @@ def test_move_to_synth_clears_forced(tmp_path, monkeypatch):
     q = _q(tmp_path, monkeypatch)
     q.enqueue("raw", "/abs/raw/arch.png")
     q.mark_forced("/abs/raw/arch.png")
+    q.write_note("/abs/raw/arch.png", "auth topology, trust boundaries")
     q.move_to_synth("raw", "/abs/raw/arch.png", lines=10, flag="dense")
     assert not q.is_forced("/abs/raw/arch.png")
+    # the note deliberately carries into synth as a focus hint; only the marker is cleared
+    assert q.read_note("/abs/raw/arch.png") == "auth topology, trust boundaries"
 
 def test_cli_forced_roundtrip(tmp_path, monkeypatch):
     q = _q(tmp_path, monkeypatch)

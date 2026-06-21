@@ -89,6 +89,8 @@ def enqueue(source: str, identity: str) -> None:
     if in_synth(source, identity):
         _remove(synth_file(source), identity)
         clear_note(identity)   # stale triage hint must not survive a re-detect
+    # NB: the forced marker is intentionally NOT cleared here — a re-detected
+    # forced item stays kept (spec: "explicit intent wins"). Do not add clear_forced.
     _append(extract_file(source), identity)
 
 
