@@ -14,8 +14,14 @@ structural problems that are *computable* — no model judgment required:
   * stale export link      — a wiki link to a raw jira-exports/ file (old convention;
                              References must link raw/imports/jira/ + live Jira, never raw)
 
-It also runs ONE advisory (warning-only) check that does NOT affect the exit code:
+It also runs advisory (warning-only) checks that do NOT affect the exit code:
 
+  * context-ref-leak       — a current claim leaning on out-of-section deictic
+                             context ("in this state", "as described above") with
+                             no resolving cross-link on the line, so it misleads
+                             when read as a retrieved fragment (grep/qmd) or via a
+                             single inbound link. Candidate list for the semantic
+                             retrieval-robustness pass; heuristic → WARN only.
   * supersession-leak      — a *retired* renamed noun (a project/instrument/result/
                              report/path name that some page's name-history shows
                              was renamed to a newer term) still asserted as CURRENT on
@@ -32,7 +38,8 @@ done here — those need the Opus semantic-lint subagent.
 
 Exit code is non-zero if any hard *issue* is found (warnings excluded), so the
 synth gate / CI can branch on it. Pure stdlib; run from the repo root:
-``python scripts/lint_wiki.py`` (add ``--no-rename-check`` to skip the advisory).
+``python scripts/lint_wiki.py`` (add ``--no-rename-check`` / ``--no-context-check``
+to skip an advisory check).
 """
 
 from __future__ import annotations
@@ -177,6 +184,59 @@ def _supersession_leaks(pages, page_text) -> list[str]:
     return warns
 
 
+# --- Context-dependent references (advisory) ----------------------------------
+# A current claim whose meaning leans on out-of-section context — "in this state",
+# "in that case", "as described above" — reads correctly in place but turns
+# ambiguous when retrieved as a fragment (grep/qmd) or reached via a single inbound
+# link: the antecedent (a heading, an earlier bullet) is gone. We flag such a line
+# only when it carries NO resolving cross-link the reader could follow — no
+# [[wikilink]], no anchor ``](#…)``, no relative ``](../…)``. Whether the antecedent
+# is *genuinely* non-local needs the semantic pass to judge; this just hands it a
+# small candidate list (pairs with the retrieval-robustness semantic pass). Adding a
+# cross-link or naming the antecedent inline clears the warning.
+_DEICTIC_RE = re.compile(
+    r"\bin this state\b|\bin that state\b|\bthis state\b|\bin this mode\b|"
+    r"\bin this case\b|\bin that case\b|\bin these cases\b|\bin those cases\b|"
+    r"\bin this situation\b|\bin this scenario\b|\bin this configuration\b|"
+    r"\bsuch cases\b|\bwhen this happens\b|"
+    r"\bas (?:described|shown|noted|mentioned) (?:above|below)\b",
+    re.IGNORECASE,
+)
+_RESOLVING_LINK_RE = re.compile(r"\[\[|\]\(#|\]\(\.\.")
+
+
+def _context_dependent_refs(pages, page_text) -> list[str]:
+    """WARN-level: deictic claims with no resolving cross-link (retrieval hazard).
+
+    Skips frontmatter and fenced code (deixis there is code, not prose). Emits one
+    candidate per offending line for the semantic retrieval-robustness pass to
+    triage — local-antecedent false positives are expected and acceptable at this
+    tier; it is calibrated for precision over recall, so it never fires the exit."""
+    warns: list[str] = []
+    for p in pages:
+        in_fence = in_fm = False
+        for ln, line in enumerate(page_text[p].splitlines(), 1):
+            stripped = line.strip()
+            if ln == 1 and stripped == "---":
+                in_fm = True
+                continue
+            if in_fm:
+                if stripped == "---":
+                    in_fm = False
+                continue
+            if stripped.startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            m = _DEICTIC_RE.search(line)
+            if m and not _RESOLVING_LINK_RE.search(line):
+                warns.append(
+                    f'context-ref-leak: {p}:{ln} "{m.group(0)}" has no resolving '
+                    f"cross-link (antecedent may be a heading/earlier section)")
+    return warns
+
+
 def _content_pages() -> list[Path]:
     return sorted(p for p in WIKI.rglob("*.md"))
 
@@ -284,12 +344,14 @@ def main() -> int:
 
     issues = lint(WIKI)
 
-    # Advisory (warning-only) rename-leakage check — never affects exit code.
+    # Advisory (warning-only) checks — never affect the exit code.
     pages = _content_pages()
     page_text = {p: p.read_text(encoding="utf-8") for p in pages}
     warns: list[str] = []
     if "--no-rename-check" not in sys.argv:
-        warns = _supersession_leaks(pages, page_text)
+        warns += _supersession_leaks(pages, page_text)
+    if "--no-context-check" not in sys.argv:
+        warns += _context_dependent_refs(pages, page_text)
 
     # Report.
     if not issues:
@@ -304,7 +366,7 @@ def main() -> int:
             print(f"  {line}")
 
     if warns:
-        print(f"WARN | {len(warns)} rename-leak warning(s) (advisory, exit unaffected):")
+        print(f"WARN | {len(warns)} advisory warning(s) (exit unaffected):")
         for line in warns:
             print(f"  {line}")
 

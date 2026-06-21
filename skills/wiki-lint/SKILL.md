@@ -10,7 +10,9 @@ Two tiers. Run both (default) or just the mechanical tier with `mechanical`.
 ## 1. Mechanical (always; deterministic)
 Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"`. Deterministic checks: broken `[[wikilinks]]`,
 orphan pages, duplicate slugs, `index.md` drift, frontmatter gaps. Exit 0 = clean,
-non-zero = issues (printed). This is cheap — safe to run often and forward.
+non-zero = issues (printed). This is cheap — safe to run often and forward. It also
+emits advisory `WARN` lines (`context-ref-leak`, `supersession-leak`) that never
+affect the exit code — these are candidate lists for semantic passes 5 and 3 below.
 
 If the arg is `mechanical`, stop here and report the output. The mechanical tier is pure
 Python: it touches no model and no qmd index.
@@ -69,10 +71,31 @@ with the prompt below, passing it the mechanical output. Wait for it and report.
 >    `all`, or `none`. If newer sources add exceptions or additional supported
 >    cases, the absolute claim must be narrowed or flagged.
 >
-> 5. **Concept structure.** Check for concepts mentioned but lacking a page, pages
+> 5. **Retrieval robustness — context-dependent claims & unstated preconditions.**
+>    The wiki is read both by following `[[links]]` and by fragment retrieval
+>    (qmd/grep), so each section must stand on its own. The mechanical tier emits
+>    `context-ref-leak` WARNs (deictic phrases with no resolving cross-link) — triage
+>    those, and also hunt what it cannot see. Flag (and, where safe, fix) two patterns:
+>    - **Unstated precondition/gate.** A section stating that something *works / is
+>      enabled / is shown / is dispatched / is allowed* whose governing precondition,
+>      state, exception, or constraint lives in **another section or page** with no
+>      cross-reference from the mechanism site. Test: *would a reader who landed only
+>      on this section be misled?* Fix = add a bidirectional cross-link (anchor or
+>      `[[page#heading]]`) between the mechanism and its gate.
+>    - **Fragile deictic reference.** A current claim relying on "this/that state",
+>      "in that case", "as described above", etc., whose antecedent is a heading or
+>      earlier bullet rather than local text. Fix = name the antecedent inline or
+>      link to where it is defined.
+>    Scope to avoid noise: ignore deixis whose antecedent is in the same sentence or
+>    bullet — only flag when meaning depends on a *different* section/page. Adding a
+>    cross-link or naming an antecedent is meaning-preserving → auto-fixable under the
+>    safe-fix rule; deciding whether a precondition genuinely gates a mechanism needs
+>    product judgment → `BLOCKED` if unsure.
+>
+> 6. **Concept structure.** Check for concepts mentioned but lacking a page, pages
 >    that now cover two concepts and should split, and contradictions between pages.
 >
-> 6. **Lint-config suggestions (advisory).** As you check renames (passes 1-3), note any
+> 7. **Lint-config suggestions (advisory).** As you check renames (passes 1-3), note any
 >    *genuine product-noun* rename whose retired name isn't yet policed by the lint config
 >    (`wiki.config.yaml` `lint.flaggable_nouns` / `brand_nouns`). Propose the **category
 >    noun** to add (e.g. a renamed `"… Cabinet"` → suggest `Cabinet`; a retired
@@ -92,7 +115,7 @@ with the prompt below, passing it the mechanical output. Wait for it and report.
 >   - `CLEAN | checked: <pages/passes>; residual-risk: <short note>`
 >   - `FIXED | <short list>; checked: <pages/passes>; residual-risk: <short note>`
 >   - `BLOCKED | <issues needing human judgment>; checked: <pages/passes>`
->   If pass 6 produced any, append `; lint-config: add <noun>, <noun> to <list>` to the
+>   If pass 7 produced any, append `; lint-config: add <noun>, <noun> to <list>` to the
 >   return line (a proposal for the human, not a change you made).
 
 On `BLOCKED`, surface the issues and do not guess. This same tier is what the
