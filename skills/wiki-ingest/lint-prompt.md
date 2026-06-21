@@ -44,7 +44,28 @@ Mandatory semantic passes:
    `all`, or `none`. If newer sources add exceptions or additional supported
    cases, the absolute claim must be narrowed or flagged.
 
-5. **Concept structure.** Check for concepts mentioned but lacking a page, pages
+5. **Retrieval robustness — context-dependent claims & unstated preconditions.**
+   The wiki is read both by following `[[links]]` and by fragment retrieval
+   (qmd/grep), so each section must stand on its own. The mechanical tier emits
+   `context-ref-leak` WARNs (deictic phrases with no resolving cross-link) — triage
+   those, and also hunt what it cannot see. Flag (and, where safe, fix) two patterns:
+   - **Unstated precondition/gate.** A section stating that something *works / is
+     enabled / is shown / is dispatched / is allowed* whose governing precondition,
+     state, exception, or constraint lives in **another section or page** with no
+     cross-reference from the mechanism site. Test: *would a reader who landed only
+     on this section be misled?* Fix = add a bidirectional cross-link (anchor or
+     `[[page#heading]]`) between the mechanism and its gate.
+   - **Fragile deictic reference.** A current claim relying on "this/that state",
+     "in that case", "as described above", etc., whose antecedent is a heading or
+     earlier bullet rather than local text. Fix = name the antecedent inline or
+     link to where it is defined.
+   Scope to avoid noise: ignore deixis whose antecedent is in the same sentence or
+   bullet — only flag when meaning depends on a *different* section/page. Adding a
+   cross-link or naming an antecedent is meaning-preserving → auto-fixable under the
+   safe-fix rule; deciding whether a precondition genuinely gates a mechanism needs
+   product judgment → `BLOCKED` if unsure.
+
+6. **Concept structure.** Check for concepts mentioned but lacking a page, pages
    that now cover two concepts and should split, and contradictions between pages.
 
 - **Auto-fix** only safe, unambiguous issues (missing cross-link, broken link
