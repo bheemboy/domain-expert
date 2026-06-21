@@ -45,7 +45,7 @@ has become the wiki.
 
 | Layer | Location | Who owns it | Mutable by you? |
 |-------|----------|-------------|-----------------|
-| **Raw sources** | live Jira + the git repos in `wiki.config.yaml` `sources` + `raw/` | the human / `scripts/check_for_changes.py` | **Never edit a raw source.** External repos are `git pull --ff-only`'d at detection (HEAD = watermark); the wiki repo and `raw/` are never pulled. |
+| **Raw sources** | live Jira + the git repos in `wiki.config.yaml` `sources` + `raw/` | the human / `scripts/check_for_changes.py` | **Never edit a raw source.** External repos are `git pull --ff-only`'d during a source scan (HEAD = watermark); the wiki repo and `raw/` are never pulled. |
 | **Imports** (materialized awkward raw) | `raw/imports/` | the **extract** phase (importer) | Yes, but only via extract. Read-only to synthesize. Synthesize never writes raw; `raw/imports/` is extract-owned, the rest of `raw/` is human-owned. |
 | **The wiki** | `wiki/` | the **synthesize** phase | Yes — built from imports + raw read directly. |
 | **The schema** | this `CLAUDE.md` | human + you | Only by explicit agreement. |
@@ -235,8 +235,8 @@ the queues/imports, not the log:
 **State is which queue a line is in.** An identity (Jira KEY or absolute path) lives in
 exactly one of `<config_dir>/state/<source>.{extract,synth}`, or neither (done) — its location is
 its state; an import at `raw/imports/jira/<KEY>.md` (or a converted `.md` under `raw/imports/`) means an awkward source is extracted.
-`<config_dir>/state/jira-cursor.json` holds **only** the per-project Jira detection cursor
-(machine-local runtime state, alongside the queues); git detection is stateless (the repo's own HEAD is
+`<config_dir>/state/jira-cursor.json` holds **only** the per-project Jira source-scan cursor
+(machine-local runtime state, alongside the queues); the git source scan is stateless (the repo's own HEAD is
 the watermark). Before working, check state (`queues.py status`) so you never re-process a
 source.
 
@@ -266,7 +266,7 @@ is deleted when it empties. The same queues drive both the big legacy backlog an
 ongoing forward trickle.
 
 **Tooling.**
-- `scripts/check_for_changes.py` — detect changes in Jira (per-project cursor) and external
+- `scripts/check_for_changes.py` — scan Jira (per-project cursor) and external
   git source repos (stateless: `fetch` → `pull --ff-only` → enqueue `diff before..HEAD`,
   so HEAD is the watermark); enqueue into `*.extract`. `--force <paths|folders|KEYs>`
   enqueues explicitly (folders expand recursively — the `raw/`/ad-hoc path); `--backfill
@@ -278,11 +278,11 @@ ongoing forward trickle.
   as Markdown, `--stamp-hash` updates an import's `content_hash`; creds from
   `<config_dir>/jira.token`; `--list-attachments`/`--attachments-ext png,pdf` for triage.
 - `scripts/config.py` — loads `wiki.config.yaml` (project identity for the scripts).
-- `scripts/jira_cursor.py` — `<config_dir>/state/jira-cursor.json` store, **Jira detection cursor only** (per project).
+- `scripts/jira_cursor.py` — `<config_dir>/state/jira-cursor.json` store, **Jira source-scan cursor only** (per project).
 - `scripts/ingest_state.py` — classify/key/import helpers + `extract-action` (the per-
   identity extract dispatch); source-kind/key/repo resolution.
 - `scripts/extract_docs.py` — mechanical binary-doc → `raw/imports/<hash8>/<name>.md` (explicit paths).
-- `scripts/git_changes.py` — git fetch/pull/diff helpers (stateless detection).
+- `scripts/git_changes.py` — git fetch/pull/diff helpers (stateless source scan).
 - `scripts/lint_wiki.py` — mechanical (non-LLM) wiki lint (§5 Lint).
 - `qmd` — hybrid search over `raw/` + `wiki/` (project-local `.qmd/` index,
   gitignored; collections `raw`, `wiki`); refreshed via `qmd update && qmd embed`
@@ -296,7 +296,7 @@ deps, binary-doc converters, and the optional qmd search index.
 ## 8. Conventions quick-reference
 
 - Never hand-edit anything under a source repo (`wiki.config.yaml` `sources`) or `raw/`
-  (external repos are advanced only by `git pull --ff-only` at detection).
+  (external repos are advanced only by `git pull --ff-only` during a source scan).
 - Queue state: an identity lives in exactly one of `<config_dir>/state/<source>.{extract,synth}`
   (or neither = done); `queues.py` is its only writer.
 - Imports under `raw/imports/` are written **only** by extract; synthesize reads them

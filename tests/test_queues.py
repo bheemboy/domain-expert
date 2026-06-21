@@ -259,3 +259,37 @@ def test_enqueue_bump_back_clears_stale_note(tmp_path, monkeypatch):
     assert q.read(q.extract_file("raw")) == ["/abs/x.py"]
     assert q.read(q.synth_file("raw")) == []
     assert q.read_note("/abs/x.py") == ""
+
+def test_forced_roundtrip_and_clear(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    assert not q.is_forced("/abs/arch.png")
+    q.mark_forced("/abs/arch.png")
+    assert q.is_forced("/abs/arch.png")
+    q.clear_forced("/abs/arch.png")
+    assert not q.is_forced("/abs/arch.png")
+    q.clear_forced("/abs/arch.png")   # idempotent
+
+def test_drop_clears_forced(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.enqueue("raw", "/abs/raw/arch.png")
+    q.mark_forced("/abs/raw/arch.png")
+    q.drop("raw", "/abs/raw/arch.png")
+    assert not q.is_forced("/abs/raw/arch.png")
+
+def test_move_to_synth_clears_forced(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    q.enqueue("raw", "/abs/raw/arch.png")
+    q.mark_forced("/abs/raw/arch.png")
+    q.write_note("/abs/raw/arch.png", "auth topology, trust boundaries")
+    q.move_to_synth("raw", "/abs/raw/arch.png", lines=10, flag="dense")
+    assert not q.is_forced("/abs/raw/arch.png")
+    # the note deliberately carries into synth as a focus hint; only the marker is cleared
+    assert q.read_note("/abs/raw/arch.png") == "auth topology, trust boundaries"
+
+def test_cli_forced_roundtrip(tmp_path, monkeypatch):
+    q = _q(tmp_path, monkeypatch)
+    assert _cli(tmp_path, "is-forced", "/abs/x.py").stdout.strip() == "0"
+    assert _cli(tmp_path, "mark-forced", "/abs/x.py").returncode == 0
+    assert _cli(tmp_path, "is-forced", "/abs/x.py").stdout.strip() == "1"
+    assert _cli(tmp_path, "clear-forced", "/abs/x.py").returncode == 0
+    assert _cli(tmp_path, "is-forced", "/abs/x.py").stdout.strip() == "0"

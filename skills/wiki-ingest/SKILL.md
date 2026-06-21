@@ -1,6 +1,6 @@
 ---
 name: wiki-ingest
-description: Drain the wiki work queues (extract → synth) into the wiki. Use to ingest queued Jira/docs/code. Detection and queue inspection live in wiki-queue.
+description: Drain the wiki work queues (extract → synth) into the wiki. Use to ingest queued Jira/docs/code. Source scans and queue inspection live in wiki-queue.
 ---
 
 # wiki-ingest (extract → synthesize)
@@ -8,23 +8,24 @@ description: Drain the wiki work queues (extract → synth) into the wiki. Use t
 ## Role
 
 Orchestrate the full ingest pipeline over the per-source queues (`scripts/queues.py`):
-optional detection → parallel extract → serialized synthesize. Schema: `CLAUDE.md`
+optional source scan → parallel extract → serialized synthesize. Schema: `CLAUDE.md`
 §1, §3, §4, §5, §6, §7.
 
 ## Argument forms
 
 - `/wiki-ingest` — drain all pending (extract ≤all, then synth ≤all).
 - `/wiki-ingest <N>` — per-phase budget N (extract ≤N, then synth ≤N).
-- `/wiki-ingest <path|folder> …` — one-step convenience: enqueue the paths
-  (`python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`,
-  folders expand recursively), then drain all.
+- `/wiki-ingest <path|folder> …` — one-step convenience: force-enqueue the paths
+  (`python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`, folders
+  expand recursively — unfiltered and undroppable by triage, same as `/wiki-queue <path>`),
+  then drain all.
 
 **Cold-start (the no-path forms only).** Before draining, run
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status`; if
 `pending_extract=0 pending_synth=0`, run
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py"` first. If still empty,
-report "nothing to do" and stop. If non-empty on entry, drain without detecting.
-For explicit/forced detection, scoped detection, backfill, or status, use `/wiki-queue`.
+report "nothing to do" and stop. If non-empty on entry, drain without scanning.
+For force-enqueue, a scoped source scan, backfill, or status, use `/wiki-queue`.
 
 ## Phase 1 — Extract (parallel)
 
@@ -50,6 +51,18 @@ Dispatch each `<source>\t<identity>` line on
     if the note is not `-`, `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" write-note <identity> <note>`;
     then `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity> --lines <N> --flag <flag>`.
   - `SKIP | <reason>` → `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" drop <source> <identity>` (discarded, never synthesized).
+  - `FAILED` → retry once; if it fails again, leave pending and continue.
+- **`triage-forced`** → identical to `triage`, but the identity was explicitly force-enqueued and
+  may NOT be dropped. Spawn one Haiku subagent per identity with `forced-triage-prompt.md`
+  prepended to `triage-prompt.md` (same prepend pattern as `escalation-prompt.md` + `extract-prompt.md`).
+  Act on the return line in `next-extract` order:
+  - `KEEP | <flag> | <note>` → compute the line count mechanically:
+    `wc -l < "$(python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" classify <identity> | cut -f2)"`;
+    if the note is not `-`, `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" write-note <identity> <note>`;
+    then `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity> --lines <N> --flag <flag>`
+    (which clears the forced marker).
+  - `SKIP | <reason>` (a forced item must never be dropped) → coerce to `KEEP | routine | <reason>`
+    and take the KEEP path above. Do NOT call `drop`.
   - `FAILED` → retry once; if it fails again, leave pending and continue.
 - **`extract-jira`** → spawn one Haiku subagent per key (Agent tool,
   `subagent_type: general-purpose`, `model: haiku`) with `extract-prompt.md`

@@ -200,24 +200,57 @@ def test_detection_filters_ignored_changed_files(tmp_path, monkeypatch):
     assert [Path(p).name for p in paths] == ["user.py"]  # svg filtered out
 
 
-def test_force_folder_expansion_filters_but_named_file_is_exempt(tmp_path, monkeypatch):
+def test_force_folder_expansion_is_unfiltered(tmp_path, monkeypatch):
     repo = tmp_path / "asv"
     (repo / "src").mkdir(parents=True)
     (repo / "src" / "user.py").write_text("x=1\n")
     (repo / "src" / "x.min.js").write_text("//min\n")
+    (repo / "src" / "diagram.png").write_text("png\n")
     _cfg(tmp_path, monkeypatch, repos=[str(repo)])
 
     import importlib, check_for_changes
     importlib.reload(check_for_changes)
 
-    # folder expansion: the .min.js is filtered out
+    # folder expansion under --force keeps EVERYTHING (explicit intent wins)
     expanded = check_for_changes._expand_identities([str(repo / "src")])
     names = sorted(Path(p).name for p in expanded)
-    assert names == ["user.py"]
+    assert names == ["diagram.png", "user.py", "x.min.js"]
 
-    # explicitly named ignored file: exempt (explicit intent wins)
+    # a single named ignored file remains exempt (regression guard)
     named = check_for_changes._expand_identities([str(repo / "src" / "x.min.js")])
     assert [Path(p).name for p in named] == ["x.min.js"]
+
+
+def test_enqueue_identities_forced_marks_each(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    f = repo / "src" / "diagram.png"
+    f.parent.mkdir(parents=True)
+    f.write_text("png\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+    monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
+    import importlib, check_for_changes, queues
+    importlib.reload(check_for_changes)
+
+    ident = str(f.resolve())
+    check_for_changes._enqueue_identities([ident], dry_run=False, verb="force-enqueue", forced=True)
+    assert queues.is_forced(ident)
+
+
+def test_enqueue_identities_forced_dry_run_does_not_mark(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    f = repo / "src" / "diagram.png"
+    f.parent.mkdir(parents=True)
+    f.write_text("png\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)])
+    monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
+    import importlib, check_for_changes, queues
+    importlib.reload(check_for_changes)
+
+    ident = str(f.resolve())
+    check_for_changes._enqueue_identities([ident], dry_run=True, verb="force-enqueue", forced=True)
+    assert not queues.is_forced(ident)
 
 
 def test_enqueue_identities_reports_ignored_summary(tmp_path, monkeypatch, capsys):

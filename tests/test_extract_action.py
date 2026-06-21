@@ -72,3 +72,41 @@ def test_extract_action_cli_jira_key(tmp_path):
     out = _cli(tmp_path, "CDS2ASV-1")
     assert out.returncode == 0
     assert out.stdout.strip() == "extract-jira"
+
+
+def test_forced_code_is_triage_forced(tmp_path, monkeypatch):
+    monkeypatch.setenv("IMPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("WIKI_CONFIG", str(tmp_path / "wiki.config.yaml"))
+    monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
+    import queues
+    queues.mark_forced("src/main.py")
+    assert ingest_state.extract_action("src/main.py") == "triage-forced"
+
+
+def test_unforced_code_is_triage(tmp_path, monkeypatch):
+    monkeypatch.setenv("IMPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("WIKI_CONFIG", str(tmp_path / "wiki.config.yaml"))
+    monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
+    assert ingest_state.extract_action("src/main.py") == "triage"
+
+
+def test_forced_doc_no_import_still_extract_doc_then_triage_forced(tmp_path, monkeypatch):
+    monkeypatch.setenv("IMPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("WIKI_CONFIG", str(tmp_path / "wiki.config.yaml"))
+    monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
+    import queues
+    queues.mark_forced("docs/spec.pdf")
+    assert ingest_state.extract_action("docs/spec.pdf") == "extract-doc"
+    ip = ingest_state.import_path("docs/spec.pdf")
+    ip.parent.mkdir(parents=True, exist_ok=True)
+    ip.write_text("---\nkey: x\n---\nbody\n")
+    assert ingest_state.extract_action("docs/spec.pdf") == "triage-forced"
+
+
+def test_forced_jira_key_unaffected(tmp_path, monkeypatch):
+    monkeypatch.setenv("IMPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("WIKI_CONFIG", str(tmp_path / "wiki.config.yaml"))
+    monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
+    import queues
+    queues.mark_forced("CDS2ASV-1")
+    assert ingest_state.extract_action("CDS2ASV-1") == "extract-jira"

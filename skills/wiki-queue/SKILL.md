@@ -1,31 +1,34 @@
 ---
 name: wiki-queue
-description: Detect new/changed product sources and enqueue them, or inspect the work queue — without draining. Use to run detection (Jira/repos), backfill a repo or raw/ folder the first time, or check pending counts. Draining (extract→synth) is wiki-ingest.
+description: Scan product sources for new/changed items and enqueue them, or inspect the work queue — without draining. Use to run a source scan (Jira/repos), backfill a repo or raw/ folder the first time, or check pending counts. Draining (extract→synth) is wiki-ingest.
 ---
 
-# Wiki Queue (detect / enqueue / inspect — never drains)
+# Wiki Queue (scan / enqueue / inspect — never drains)
 
 This skill manages the per-source work queues. It **never** runs extract or synth —
 that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md §6, §7.
 
 ## Argument forms
 
-- `/wiki-queue` — inspect pending counts only, no detection:
+- `/wiki-queue` — inspect pending counts only, no source scan:
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status`.
-- `/wiki-queue all` — full detection pass (Jira + external repos), enqueue what changed.
-  Detection skips paths matching the `ignore:` globs (built-in junk defaults + the consumer repo's `ignore:` list); see `wiki.config.yaml`.
+- `/wiki-queue all` — full source scan (Jira + external repos), enqueue what changed.
+  The source scan skips paths matching the `ignore:` globs (built-in junk defaults + the consumer repo's `ignore:` list); see `wiki.config.yaml`.
   Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py"`, then print status.
-- `/wiki-queue jira` — Jira-only detection (incl. first-time backlog when no cursor):
+- `/wiki-queue jira` — Jira-only source scan (incl. first-time backlog when no cursor):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --jira`.
-- `/wiki-queue repos` — external-repo-only detection:
+- `/wiki-queue repos` — external-repo-only source scan:
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --code`.
 - `/wiki-queue backfill <repo> …` — first-time load of an existing repo's tracked
-  files (detection is incremental and would otherwise enqueue nothing):
+  files (a source scan is incremental and would otherwise enqueue nothing):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --backfill <repo…>`.
 - `/wiki-queue <path|folder> …` — enqueue a raw/ drop or ad-hoc paths WITHOUT draining
-  (folders expand recursively):
+  (folders expand recursively). **Explicit intent wins**: every file is enqueued unfiltered
+  (folders included, any extension) and marked undroppable by triage — triage still reads it
+  for guidance but can never skip it — unlike a source scan and backfill, which apply the `ignore:`
+  globs. (`/wiki-ingest <path|folder>` force-enqueues identically, then drains in one step.)
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`.
-- `/wiki-queue --dry-run` — preview detection (fetch, no pull/queue/state writes):
+- `/wiki-queue --dry-run` — preview a source scan (fetch, no pull/queue/state writes):
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --dry-run`.
 
 ## Procedure
@@ -36,7 +39,7 @@ that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md
 2. Print the command's output verbatim, then always finish by running
    `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" status` so the user sees the
    resulting queue state.
-3. Detection is idempotent and safe to re-run; never drain here. To process the
+3. A source scan is idempotent and safe to re-run; never drain here. To process the
    queued work, tell the user to run `/wiki-ingest`.
 
 ## Report
