@@ -344,7 +344,7 @@ def main() -> int:
 
     issues = lint(WIKI)
 
-    # Advisory (warning-only) rename-leakage check — never affects exit code.
+    # Advisory (warning-only) checks — never affect the exit code.
     pages = _content_pages()
     page_text = {p: p.read_text(encoding="utf-8") for p in pages}
     warns: list[str] = []
