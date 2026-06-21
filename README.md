@@ -114,16 +114,18 @@ Commands are grouped by skill.
 
 Detection is incremental and idempotent; running it with nothing new is a no-op.
 
-**Ignore filtering.** Detection, `backfill`, and folder enqueues all skip files matching the
+**Ignore filtering.** Detection and `backfill` skip files matching the
 `ignore:` globs, so build output and vendored code never enter the queue. The globs are a
 built-in set of junk defaults (`node_modules/` and `vendor/` trees, minified/bundle/map
 output, `*.d.ts`, lockfiles, binary assets, styling, certs) plus any patterns you add under
-`ignore:` in `wiki.config.yaml`. Filtering applies only when a folder, repo, or detection pass
+`ignore:` in `wiki.config.yaml`. Filtering applies only when a repo or detection pass
 expands to many files; naming a single file's own path always enqueues that file, even if it
 matches a glob. Run a queue command with `--dry-run` to preview the kept-vs-ignored split.
-**Override**: `/wiki-queue <path|folder>` with `--force` follows "explicit intent wins" semantics —
-it skips the ignore filter entirely (folders included) and marks forced items undroppable by
-triage, though they are still reviewed for guidance. Use it for genuinely valuable assets or images.
+
+**Override:** `/wiki-queue <path|folder>` with `--force` follows "explicit intent wins" semantics —
+it skips the ignore filter entirely (folders included, any extension) and marks forced items
+undroppable by triage, though they are still reviewed for guidance. Use it for genuinely
+valuable assets or images.
 
 ## First-time priming
 
