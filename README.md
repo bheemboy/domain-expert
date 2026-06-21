@@ -1,29 +1,29 @@
 # domain-expert
 
 A Claude Code plugin that turns a software project's Jira tickets, source code, and
-documents into an interlinked, provenance-tracked markdown wiki: an LLM-maintained
-"domain expert" for a product.
+documents into an interlinked, provenance-tracked Markdown wiki. The result is an
+LLM-maintained "domain expert" for your product.
 
-The plugin provides the tooling and schema; each product's wiki content lives in its own
-repo, one per product. A wiki repo keeps its own `wiki/`, `raw/`, and `wiki.config.yaml`,
-while the scripts and skills travel with the plugin. You install the plugin once per
-machine, then create or adopt a wiki repo for each product.
+The plugin supplies the tooling and schema. Each product's wiki content lives in its own
+repo, one per product: a wiki repo holds its own `wiki/`, `raw/`, and `wiki.config.yaml`,
+while the scripts and skills travel with the plugin. Install the plugin once per machine,
+then create or adopt a wiki repo for each product.
 
 ## How it works
 
-A few terms describe the model:
+These terms describe the model:
 
 - **Sources**. `jira`, `raw` (the wiki repo's own `raw/` drop folder), and each external
-  git repo listed in `wiki.config.yaml` `sources`.
-- **Identity**. One unit of work: a Jira key, or an absolute file path.
+  git repo listed under `sources` in `wiki.config.yaml`.
+- **Identity**. One unit of work: a Jira key or an absolute file path.
 - **Queues**. Per-source `extract` and `synth` files under `<config_dir>/state/`
   (machine-local). An identity lives in exactly one file at a time, and its location is its
   state.
-- **Repo discovery**. The scripts find the wiki repo by walking up from the working
-  directory to the nearest `wiki.config.yaml` (override with `$WIKI_CONFIG`), so the same
-  installed plugin serves any wiki repo you `cd` into.
-- **Schema**. `CLAUDE.md` §1–§8 is generic and plugin-managed (regenerate via
-  `/wiki-init`); only §0, the product identity, is hand-edited per repo.
+- **Repo discovery**. The scripts walk up from the working directory to the nearest
+  `wiki.config.yaml` to find the wiki repo (override with `$WIKI_CONFIG`). One installed
+  plugin serves any wiki repo you `cd` into.
+- **Schema**. In `CLAUDE.md`, sections §1–§8 are generic and plugin-managed (regenerate
+  them with `/wiki-init`). Only §0, the product identity, is hand-edited per repo.
 
 A wiki repo that uses the plugin has this shape:
 
@@ -56,14 +56,14 @@ Install the plugin once per machine.
 
 ## Start a new wiki for a product
 
-Do this once per wiki repo. If you are adopting a wiki repo someone already scaffolded,
-skip step 1 and do steps 2 and 3 for your checkout.
+Do this once per wiki repo. If you are adopting a wiki repo someone else scaffolded, skip
+step 1 and do steps 2 and 3 for your checkout.
 
 1. In a fresh, empty repo, run `/wiki-init` to scaffold the wiki. It interviews you for the
    product identity (display name, internal name, Jira project key, config dir, Jira
    `base_url` and JQL (Jira Query Language), source repos, what counts as business-relevant,
    domain acronyms, and brand or rename terms), then creates:
-   - `wiki/` seed tree (`index.md`, `log.md`, `overview.md`, and the `entities/`,
+   - the `wiki/` seed tree (`index.md`, `log.md`, `overview.md`, and the `entities/`,
      `concepts/`, `processes/`, `rules/`, and `terminology/` directories)
    - `wiki.config.yaml` (project identity for the tooling)
    - `CLAUDE.md` (the wiki's schema: a product-identity section filled from your interview
@@ -75,7 +75,7 @@ skip step 1 and do steps 2 and 3 for your checkout.
    JIRA_EMAIL=you@example.com
    JIRA_TOKEN=YOUR_API_TOKEN
    ```
-   You can instead export `JIRA_EMAIL` and `JIRA_TOKEN`; the file wins when both are present.
+   You can instead export `JIRA_EMAIL` and `JIRA_TOKEN`. When both are present, the file wins.
 3. *(Optional)* Build the qmd search index. It speeds up related-page lookup during ingest
    and lint; the skills fall back to `grep` when it is absent. Run once, from the wiki repo
    root:
@@ -86,48 +86,58 @@ skip step 1 and do steps 2 and 3 for your checkout.
    qmd update && qmd embed
    ```
    The index lives in `.qmd/` (gitignored and machine-local, so rebuild it per machine).
-   `/wiki-ingest` refreshes it at the start and end of a run, and `/wiki-lint` at the start.
+   `/wiki-ingest` refreshes it at the start and end of a run; `/wiki-lint` refreshes it at
+   the start.
 
 Then prime your sources (see [First-time priming](#first-time-priming)) and run
 `/wiki-ingest`.
 
 ## Command reference
 
-Every task is driven by a slash command; there are no direct `python scripts/…` calls.
+Every task runs from a slash command; there are no direct `python scripts/…` calls.
 Commands are grouped by skill.
 
 | Command | What it does, and when to use it |
 |---|---|
-| `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki for a new product, and again after a plugin update to refresh the schema. Upgrade rewrites only the generic schema body and leaves your hand-written product-identity section (`CLAUDE.md` §0: names, Jira key, source repos) untouched. |
+| `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki, and again after a plugin update to refresh the schema. An upgrade rewrites only the generic schema body; your hand-written product-identity section (`CLAUDE.md` §0: names, Jira key, source repos) stays untouched. |
 | `/wiki-ingest` | Detects new Jira and repo changes when the queue is empty, then ingests everything pending (extract, then synthesize). The default day-to-day command: run it to bring the wiki up to date. |
-| `/wiki-ingest N` | Same as `/wiki-ingest`, including the detect-when-empty step, but caps each phase at N items. Use it to work through a large backlog in controlled chunks (for example, `/wiki-ingest 30` repeatedly) instead of one long run. |
-| `/wiki-ingest <path\|folder>` | Enqueues a path under `raw/` or a configured source repo, then ingests it in one step, skipping detection. A folder is a filesystem walk: every file under it is enqueued, tracked or not, with no `ignore:`-glob filtering — force-enqueue takes everything (see the Override note below the table). Use this for `raw/` drops or specific files. Give the path relative to the wiki repo root (for example, `raw/specs/api.pdf`) or as an absolute path. A path outside `raw/` and the configured source repos is rejected. To enqueue a drop and then ingest it into the wiki under a per-phase budget, see `/wiki-queue <path\|folder>` followed by `/wiki-ingest N`. |
-| `/wiki-lint` | Runs the full health-check: deterministic checks plus a semantic review (stale, contradictory, or unsuperseded claims). Run it periodically, and before relying on the wiki for answers. |
-| `/wiki-lint mechanical` | Runs only the fast deterministic checks: broken `[[wikilinks]]`, orphan pages, duplicate slugs, index drift, and frontmatter gaps. Use it for a quick structural check or in a pre-commit or CI step. |
-| `/wiki-queue` | Shows pending extract and synth counts per source. Use it to check what's queued before or after a run. |
-| `/wiki-queue all` | Forces a full detection pass (Jira and repos) and enqueues what changed, without ingesting anything into the wiki. Use it when you know new work landed and want it queued now, rather than waiting for `/wiki-ingest` to detect on an empty queue. |
+| `/wiki-ingest N` | The same as `/wiki-ingest`, but caps each phase at N items. Use it to work through a large backlog in controlled chunks, such as `/wiki-ingest 30` run a few times. |
+| `/wiki-ingest <path\|folder>` | Enqueues a path or folder, then ingests it in one step (no detection). Takes every file, unfiltered; see [Force-enqueue](#force-enqueue) below. The path must be under `raw/` or a configured source repo, given relative to the repo root (for example, `raw/specs/api.pdf`) or as an absolute path. |
+| `/wiki-lint` | Runs the full health check: deterministic checks plus a semantic review (stale, contradictory, or unsuperseded claims). Run it periodically, and before you rely on the wiki for answers. |
+| `/wiki-lint mechanical` | Runs only the fast deterministic checks: broken `[[wikilinks]]`, orphan pages, duplicate slugs, index drift, and frontmatter gaps. Use it for a quick structural check, or in a pre-commit or CI step. |
+| `/wiki-queue` | Shows pending extract and synth counts per source. Use it to check what is queued before or after a run. |
+| `/wiki-queue all` | Runs a full detection pass (Jira and repos) and enqueues what changed, without ingesting anything. Use it when you know new work landed and want it queued now. |
 | `/wiki-queue jira` | Detects Jira changes only and enqueues them, including the first-time backlog when no cursor exists yet. Use it to prime or refresh Jira without touching repos. |
 | `/wiki-queue repos` | Detects external-repo changes only (the commits a `git pull` brings in) and enqueues them. Use it to pick up source-code changes without a Jira pass. |
-| `/wiki-queue <path\|folder>` | Enqueues a path under `raw/` or a configured source repo without ingesting it into the wiki. A folder is a filesystem walk: every file under it is enqueued, tracked or not, with no `ignore:`-glob filtering — force-enqueue takes everything (see the Override note below the table). Use this for `raw/` drops or specific files. Give the path relative to the wiki repo root (for example, `raw/specs`) or as an absolute path. A path outside `raw/` and the configured source repos is rejected. Use it to stage several `raw/` drops before a single `/wiki-ingest`. |
-| `/wiki-queue backfill <repo> …` | Enqueues the repo's git-tracked files via `git ls-files`, so gitignored files and `.git/` internals are excluded, and anything matching the `ignore:` globs is filtered out as well (see the note below the table). Unlike the `<path\|folder>` force-enqueue forms — which filter nothing — this both applies the `ignore:` globs and lists tracked files only, never picking up untracked files. Name a repo by its `wiki.config.yaml` source name (for example, `my-project`) or by path, and pass several to backfill more than one at once. At least one repo is required; there is no bare "backfill everything" form. Use it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
-| `/wiki-queue --dry-run` | Previews what detection would enqueue, fetching but not pulling, queueing, or writing state. Use it to preview a detection pass before committing to it. |
+| `/wiki-queue <path\|folder>` | Enqueues a path or folder without ingesting it. Takes every file, unfiltered; see [Force-enqueue](#force-enqueue) below. Same path rules as `/wiki-ingest <path\|folder>` above. Use it to stage several `raw/` drops before a single `/wiki-ingest`. |
+| `/wiki-queue backfill <repo> …` | Enqueues a repo's git-tracked files via `git ls-files`, so gitignored files and `.git/` internals are skipped. It also applies the `ignore:` globs (see [Ignore filtering](#ignore-filtering) below). It lists tracked files only, so it never picks up untracked files, unlike the force-enqueue forms above. Name a repo by its `wiki.config.yaml` source name (for example, `my-project`) or by path, and pass several to backfill more than one at once. Run it once when first adding a repo, since incremental detection enqueues nothing for an already-current clone. |
+| `/wiki-queue --dry-run` | Previews what detection would enqueue: it fetches, but does not pull, queue, or write state. |
 
-Detection is incremental and idempotent; running it with nothing new is a no-op.
+Detection is incremental and idempotent; running it with nothing new does nothing.
 
-**Ignore filtering.** Detection and `backfill` skip files matching the
-`ignore:` globs, so build output and vendored code never enter the queue. The globs are a
-built-in set of junk defaults (`node_modules/` and `vendor/` trees, minified/bundle/map
-output, `*.d.ts`, lockfiles, binary assets, styling, certs) plus any patterns you add under
-`ignore:` in `wiki.config.yaml`. Filtering applies only when a repo or detection pass
-expands to many files; naming a single file's own path always enqueues that file, even if it
-matches a glob. Run a queue command with `--dry-run` to preview the kept-vs-ignored split.
+### Ignore filtering
 
-**Override (force-enqueue).** Force-enqueuing bypasses the ignore filter entirely — every file
-is queued, folders included, any extension — and the forced items are never dropped by triage.
-(Triage still reads each one to flag density and add a focus note; it just cannot skip it.) Use
-this for genuinely valuable assets or images. Two commands force-enqueue, and both expand folders
-recursively: `/wiki-queue <path|folder>` queues only, while `/wiki-ingest <path|folder>` queues
-and then ingests.
+Detection and `backfill` skip files that match the `ignore:` globs, so build output and
+vendored code never enter the queue. The globs are a built-in set of junk defaults
+(`node_modules/` and `vendor/` trees; minified, bundle, and map output; `*.d.ts`;
+lockfiles; binary assets; styling; certs) plus any patterns you add under `ignore:` in
+`wiki.config.yaml`.
+
+Filtering applies only when a repo or detection pass expands to many files. Naming a single
+file's own path always enqueues that file, even if it matches a glob. Run any queue command
+with `--dry-run` to preview the kept-versus-ignored split.
+
+### Force-enqueue
+
+Force-enqueuing takes every file under the path or folder, with no `ignore:` filtering and
+any extension. The forced files are never dropped during triage. (Triage still reads each
+one to judge density and add a focus note; it just cannot skip the file.) Use it for
+genuinely valuable assets or images that the filters would otherwise drop.
+
+Two commands force-enqueue, and both expand folders recursively:
+
+- `/wiki-queue <path|folder>` queues the files only.
+- `/wiki-ingest <path|folder>` queues the files, then ingests them.
 
 ## First-time priming
 
@@ -137,10 +147,10 @@ Because detection is incremental, a brand-new source needs a one-time prime:
 |---|---|
 | Jira backlog | `/wiki-queue jira` |
 | A source repo's existing files | `/wiki-queue backfill <repo> …` |
-| A document or file drop in `raw/` | `/wiki-queue raw/<path>` (enqueue only), or `/wiki-ingest raw/<path>` (enqueue and ingest into the wiki) |
+| A document or file drop in `raw/` | `/wiki-queue raw/<path>` (enqueue only), or `/wiki-ingest raw/<path>` (enqueue and ingest) |
 
 With several source repos, prime them in one call (`/wiki-queue backfill <repo1> <repo2>
-…`) or one repo at a time; the order does not matter, since you ingest once at the end.
+…`) or one at a time. The order does not matter, since you ingest once at the end.
 
-After priming, run `/wiki-ingest` to process the queue. Plain `/wiki-ingest` keeps
-everything current from then on.
+After priming, run `/wiki-ingest` to process the queue. From then on, plain `/wiki-ingest`
+keeps everything current.
