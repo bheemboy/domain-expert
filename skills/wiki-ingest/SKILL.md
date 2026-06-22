@@ -96,7 +96,8 @@ so newer supersedes older (CLAUDE.md §4.3).
 **Invariants:** STRICTLY SERIALIZED — exactly one subagent in flight, ever. Synth
 and lint subagents share `wiki/`, `index.md`, `log.md`; overlap corrupts them.
 
-**Index refresh (qmd):** `qmd update && qmd embed` at start and end of run. If
+**Index refresh (qmd):** `qmd update && qmd embed --max-batch-mb 1` at start and end of
+run (the 1 MB batch cap avoids `qmd embed` timeouts on slower machines). If
 missing or failing, continue and note `qmd-unavailable` — staleness is acceptable,
 a blocked ingest is not.
 

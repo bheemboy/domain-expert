@@ -61,8 +61,10 @@ step 1 and do steps 2 and 3 for your checkout.
    qmd init
    qmd collection add raw  --name raw
    qmd collection add wiki --name wiki
-   qmd update && qmd embed
+   qmd update && qmd embed --max-batch-mb 1
    ```
+   The `--max-batch-mb 1` cap keeps `qmd embed` from timing out on slower machines; raise
+   or drop it if your hardware embeds comfortably in larger batches.
    The index lives in `.qmd/` (gitignored and machine-local, so rebuild it per machine).
    `/wiki-ingest` refreshes it at the start and end of a run; `/wiki-lint` refreshes it at
    the start of a run.
