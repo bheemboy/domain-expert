@@ -131,12 +131,15 @@ Run the start-of-run index refresh, then loop until budget reached or
      `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" synthed <source> <id>`.
    - `NEEDS-INPUT | <question>` → STOP; surface verbatim.
    - `FAILED` → retry once with a fresh subagent; else STOP (mark only confirmed ids).
-3. **Lint gate** — after every `LINT_EVERY` synthesized and once at end, only when
-   no synth subagent is running:
+3. **Lint gate (delta)** — after every `LINT_EVERY` synthesized (default 20) and once at
+   end of run, only when no synth subagent is running:
    a. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"`.
-   b. Spawn one Opus subagent (`model: opus`) with the canonical lint prompt
-      `${CLAUDE_PLUGIN_ROOT}/skills/wiki-lint/lint-prompt.md` and the mechanical
-      output. Wait. `CLEAN`/`FIXED` → continue; `BLOCKED` → STOP.
+   b. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_scope.py" delta` → the changed-since-last-
+      lint page set (neighbor-expanded). If empty, skip the subagent.
+   c. Spawn one Opus subagent (`model: opus`) with
+      `${CLAUDE_PLUGIN_ROOT}/prompts/lint-prompt.md`, filling the `## Scope` **delta** option
+      with that page list and the mechanical output. It appends a `lint | auto` line. Wait.
+      `CLEAN`/`FIXED` → continue; `BLOCKED` → STOP.
 
 ## Report
 

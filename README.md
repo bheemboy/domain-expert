@@ -65,7 +65,7 @@ step 1 and do steps 2 and 3 for your checkout.
    ```
    The index lives in `.qmd/` (gitignored and machine-local, so rebuild it per machine).
    `/wiki-ingest` refreshes it at the start and end of a run; `/wiki-lint` refreshes it at
-   the start.
+   the start of a run.
 
 ## Command reference
 
@@ -78,7 +78,8 @@ Commands are grouped by skill.
 | `/wiki-ingest` | Scans your sources for new Jira and repo changes when the queue is empty, then ingests everything pending (extract, then synthesize). The default day-to-day command: run it to bring the wiki up to date. |
 | `/wiki-ingest N` | The same as `/wiki-ingest`, but caps each phase at N items. Use it to work through a large backlog in controlled chunks, such as `/wiki-ingest 30` run a few times. |
 | `/wiki-ingest <path\|folder>` | Enqueues a path or folder, then ingests it in one step (no scan). Takes every file, unfiltered; see [Force-enqueue](#force-enqueue) below. The path must be under `raw/` or a configured source repo, given relative to the repo root (for example, `raw/specs/api.pdf`) or as an absolute path. |
-| `/wiki-lint` | Runs the full health check: deterministic checks plus a semantic review (stale, contradictory, or unsuperseded claims). Run it periodically, and before you rely on the wiki for answers. |
+| `/wiki-lint` | Delta health check: deterministic checks plus a semantic review of the pages **changed since the last lint** and their direct neighbors. Fast; run it any time. After an ingest run it usually reports nothing new — the signal the wiki is current. |
+| `/wiki-lint --full` | Exhaustive whole-wiki audit: shards the wiki so every page is reviewed, with a cross-shard reconciliation pass. Slower; run it rarely — before relying on the wiki for something important, before a release, or periodically. |
 | `/wiki-lint mechanical` | Runs only the fast deterministic checks: broken `[[wikilinks]]`, orphan pages, duplicate slugs, index drift, and frontmatter gaps. Use it for a quick structural check, or in a pre-commit or CI step. |
 | `/wiki-queue` | Shows pending extract and synth counts per source. Use it to check what is queued before or after a run. |
 | `/wiki-queue all` | Runs a full source scan and enqueues what changed, without ingesting anything. A *source scan* checks Jira and your source repos for items that are new or changed since the last run; it is incremental, so re-running it with nothing new does nothing. Use it when you know new work landed and want it queued now. |
