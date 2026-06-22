@@ -201,11 +201,15 @@ only the *policy* they implement.
 - **Query — `ask <question>`** (default mode): read `index.md`, follow `[[links]]`,
   answer with inline `[KEY]` citations; offer to file a reusable answer back as a page.
 
-- **Lint — `/lint`**: *mechanical* (`scripts/lint_wiki.py`, deterministic — broken
-  links, orphans, dup slugs, index drift, frontmatter gaps) plus *semantic* (an Opus
-  subagent — contradictions, claims a newer source superseded but weren't moved to
-  `## Superseded`, concepts needing a page or a page that should split). Surface, do
-  not auto-fix, issues needing human judgment.
+- **Lint — `/lint`**: *mechanical* (`scripts/lint_wiki.py`, deterministic) plus *semantic*
+  (an Opus engine over the canonical `prompts/lint-prompt.md`) in two scopes, each audited
+  **exhaustively** over a deterministically-resolved page set (`scripts/lint_scope.py`):
+  - **delta** (default; also the synth gate): pages changed since the last lint + their
+    1-hop `[[neighbors]]`. The watermark is the last `lint` line in `log.md` (append
+    position, not date). Logs `lint | auto` (gate) or `lint | manual`.
+  - **full** (`/lint --full`): the whole wiki, sharded so every page is read, with a
+    cross-shard synthesis pass. Rare/on-demand. Logs `lint --full | manual`.
+  Surface, do not auto-fix, issues needing human judgment.
 
 - **Search (qmd).** Query, synthesize, and lint may locate pages/imports via `qmd`
   (project-local index; `raw` + `wiki` collections) — hits are leads to open,
@@ -229,8 +233,12 @@ the queues/imports, not the log:
 ```
 ## [2026-06-09] synth  | PROJ-37 (story, 2017-11) | pages: login, authentication, glossary
 ## [2026-06-09] query  | "how does the product authenticate?" | pages read: authentication, login
-## [2026-06-09] lint   | 2 orphans, 1 stale claim flagged
+## [2026-06-09] lint | auto   | scope: 14 pages since last lint + neighbors | FIXED 1 broken link
+## [2026-06-09] lint --full | manual | scope: 59 pages, 5 shards | CLEAN
 ```
+
+`lint | auto` is a synth-gate delta; `lint | manual` a hand-run delta; `lint --full` a full
+audit. All three are the lint watermark (the `auto|manual` field is traceability only).
 
 **State is which queue a line is in.** An identity (Jira KEY or absolute path) lives in
 exactly one of `<config_dir>/state/<source>.{extract,synth}`, or neither (done) — its location is
