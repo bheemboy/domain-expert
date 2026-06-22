@@ -16,6 +16,21 @@ Mechanical output:
 <paste lint_wiki.py output here>
 ```
 
+## Scope
+
+Audit exactly the page set named here — exhaustively, not by sampling:
+
+- **delta** — Audit ONLY these pages (changed since the last lint) and the listed
+  1-hop neighbors: `<page list>`. Evaluate the global passes (summary-page
+  consistency, concept-split) *as they bear on these pages* — i.e. check whether
+  these changes affect `index.md` / `overview.md` / `glossary.md`, not a full
+  summary-vs-everything reconciliation. Append a `lint | <auto|manual>` line to
+  `wiki/log.md`.
+- **full, shard `<i>` of `<n>`** — Audit ONLY these pages: `<shard list>`. Return
+  your findings to the synthesis step (do not write `log.md`); a final synthesis
+  agent reconciles cross-shard contradictions, checks the summary pages against
+  the whole set, and appends one `lint --full | manual` line to `wiki/log.md`.
+
 First read `wiki/index.md`, `wiki/overview.md`, `wiki/terminology/glossary.md`,
 and the most recent lint/synth entries in `wiki/log.md`. These summary pages are
 high-risk: their broad current-sounding claims must reflect the newest specific
