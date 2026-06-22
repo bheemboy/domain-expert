@@ -136,8 +136,8 @@ Run the start-of-run index refresh, then loop until budget reached or
 3. **Lint gate (delta, size-gated)** — only when no synth subagent is running. After each
    batch, size the pending delta and lint when it is big enough (not on a fixed source
    count):
-   a. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_scope.py" delta` → the changed-since-last-
-      lint page set (neighbor-expanded), one slug per line. Let `D` be its line count.
+   a. `D=$(python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_scope.py" delta --count)` → the size of
+      the pending changed-since-last-lint page set (neighbor-expanded), as an integer.
    b. Run the gate when **`D ≥ LINT_DELTA_PAGES` (default 25)**, or this is the **end of the
       run** and `D > 0`. Otherwise skip and keep synthesizing — the delta carries forward and
       is re-sized after the next batch. (`D` self-bounds: each lint writes a `lint | auto`
@@ -145,9 +145,10 @@ Run the start-of-run index refresh, then loop until budget reached or
       rarely reaches the threshold mid-run, so the gate effectively runs once at end; on a
       large wiki it fires periodically as real volume accumulates.)
    c. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"`.
-   d. Spawn one Opus subagent (`model: opus`) with
+   d. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_scope.py" delta` → the page list itself (one
+      slug per line). Spawn one Opus subagent (`model: opus`) with
       `${CLAUDE_PLUGIN_ROOT}/prompts/lint-prompt.md`, filling the `## Scope` **delta** option
-      with that page list (from step a) and the mechanical output. It appends a `lint | auto`
+      with that page list (from step d) and the mechanical output. It appends a `lint | auto`
       line. Wait. `CLEAN`/`FIXED` → continue; `BLOCKED` → STOP.
 
 ## Report

@@ -100,21 +100,24 @@ def shard_pages(wiki_dir: Path, budget_lines: int = 3500) -> list[list[str]]:
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args or args[0] not in ("delta", "full"):
-        print("usage: lint_scope.py delta|full [budget_lines]", file=sys.stderr)
+        print("usage: lint_scope.py delta [--count] | full [budget_lines]", file=sys.stderr)
         return 2
     wiki = config.wiki_root() / "wiki"
     if args[0] == "delta":
         log = wiki / "log.md"
         log_text = log.read_text(encoding="utf-8") if log.is_file() else ""
-        changed = changed_since_last_lint(log_text)
-        for slug in one_hop_neighbors(changed, wiki):
-            print(slug)
+        pages = one_hop_neighbors(changed_since_last_lint(log_text), wiki)
+        if "--count" in args[1:]:
+            print(len(pages))          # just the size, for the synth gate's threshold check
+        else:
+            for slug in pages:
+                print(slug)
         return 0
     if len(args) > 1:
         try:
             budget = int(args[1])
         except ValueError:
-            print("usage: lint_scope.py delta|full [budget_lines]", file=sys.stderr)
+            print("usage: lint_scope.py delta [--count] | full [budget_lines]", file=sys.stderr)
             return 2
     else:
         budget = 3500

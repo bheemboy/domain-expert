@@ -144,3 +144,22 @@ def test_main_full_rejects_non_integer_budget(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("WIKI_CONFIG", str(repo / "wiki.config.yaml"))
     assert lint_scope.main(["full", "notanint"]) == 2
     assert "usage:" in capsys.readouterr().err
+
+
+def test_main_delta_count_prints_integer_only(tmp_path, monkeypatch, capsys):
+    repo = _wiki_repo(
+        tmp_path,
+        {"concepts/alpha.md": "[[beta]]", "concepts/beta.md": "x", "concepts/gamma.md": "[[alpha]]"},
+        log="## [2026-06-01] lint | manual | clean\n## [2026-06-02] synth | A | pages: alpha\n",
+    )
+    monkeypatch.setenv("WIKI_CONFIG", str(repo / "wiki.config.yaml"))
+    assert lint_scope.main(["delta", "--count"]) == 0
+    assert capsys.readouterr().out.strip() == "3"   # alpha + beta + gamma, count only (no slugs)
+
+
+def test_main_delta_count_zero_when_nothing_changed(tmp_path, monkeypatch, capsys):
+    repo = _wiki_repo(tmp_path, {"concepts/a.md": "x"},
+                      log="## [2026-06-02] lint | manual | clean\n")
+    monkeypatch.setenv("WIKI_CONFIG", str(repo / "wiki.config.yaml"))
+    assert lint_scope.main(["delta", "--count"]) == 0
+    assert capsys.readouterr().out.strip() == "0"
