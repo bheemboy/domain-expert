@@ -65,3 +65,25 @@ def test_neighbors_empty_when_no_changes(tmp_path):
 def test_neighbors_drop_broken_link_targets(tmp_path):
     wiki = _wiki(tmp_path, {"concepts/alpha.md": "[[nonexistent]]"})
     assert lint_scope.one_hop_neighbors(["alpha"], wiki) == ["alpha"]
+
+
+def test_shard_splits_oversized_folder_by_line_budget(tmp_path):
+    big = ("line\n" * 100)          # 100 lines
+    wiki = _wiki(tmp_path, {
+        "concepts/a.md": big, "concepts/b.md": big, "concepts/c.md": big,
+        "entities/x.md": "small\n",
+        "index.md": "entry", "log.md": "entry", "overview.md": "entry",
+    })
+    shards = lint_scope.shard_pages(wiki, budget_lines=150)
+    assert ["a"] in shards and ["b"] in shards and ["c"] in shards   # each alone
+    assert ["x"] in shards                                            # small folder, own shard
+    flat = [slug for s in shards for slug in s]
+    assert "index" not in flat and "log" not in flat and "overview" not in flat
+
+
+def test_shard_packs_small_pages_together(tmp_path):
+    wiki = _wiki(tmp_path, {
+        "concepts/a.md": "x\n", "concepts/b.md": "y\n", "concepts/c.md": "z\n",
+    })
+    shards = lint_scope.shard_pages(wiki, budget_lines=150)
+    assert shards == [["a", "b", "c"]]                               # all fit in one shard

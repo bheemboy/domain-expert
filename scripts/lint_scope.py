@@ -67,3 +67,31 @@ def one_hop_neighbors(changed, wiki_dir: Path) -> list[str]:
         if targets & changed:
             out.add(slug)             # inbound: pages that link to a changed page
     return sorted(s for s in out if s in real_slugs)
+
+
+def _folder(p: Path, wiki_dir: Path) -> str:
+    rel = p.relative_to(wiki_dir)
+    return rel.parts[0] if len(rel.parts) > 1 else "(root)"
+
+
+def shard_pages(wiki_dir: Path, budget_lines: int = 3500) -> list[list[str]]:
+    """Folder-aware partition of content pages, each shard within a line budget."""
+    pages = sorted(p for p in wiki_dir.rglob("*.md")
+                   if lint_wiki._slug(p) not in lint_wiki.ENTRY_PAGES)
+    by_folder: dict[str, list[Path]] = {}
+    for p in pages:
+        by_folder.setdefault(_folder(p, wiki_dir), []).append(p)
+    shards: list[list[str]] = []
+    for folder in sorted(by_folder):
+        cur: list[str] = []
+        cur_lines = 0
+        for p in by_folder[folder]:
+            n = p.read_text(encoding="utf-8").count("\n") + 1
+            if cur and cur_lines + n > budget_lines:
+                shards.append(cur)
+                cur, cur_lines = [], 0
+            cur.append(lint_wiki._slug(p))
+            cur_lines += n
+        if cur:
+            shards.append(cur)
+    return shards
