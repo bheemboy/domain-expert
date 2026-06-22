@@ -110,7 +110,14 @@ def main(argv=None) -> int:
         for slug in one_hop_neighbors(changed, wiki):
             print(slug)
         return 0
-    budget = int(args[1]) if len(args) > 1 else 3500
+    if len(args) > 1:
+        try:
+            budget = int(args[1])
+        except ValueError:
+            print("usage: lint_scope.py delta|full [budget_lines]", file=sys.stderr)
+            return 2
+    else:
+        budget = 3500
     for shard in shard_pages(wiki, budget):
         print(",".join(shard))
     return 0

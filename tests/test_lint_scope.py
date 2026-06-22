@@ -108,6 +108,17 @@ def test_shard_packs_small_pages_together(tmp_path):
     assert shards == [["a", "b", "c"]]                               # all fit in one shard
 
 
+def test_shard_single_oversized_page_gets_own_shard(tmp_path):
+    big = ("line\n" * 200)          # 200 lines, exceeds the 150 budget alone
+    wiki = _wiki(tmp_path, {
+        "concepts/huge.md": big,
+        "concepts/small.md": "x\n",
+    })
+    shards = lint_scope.shard_pages(wiki, budget_lines=150)
+    assert ["huge"] in shards          # oversized page alone
+    assert ["small"] in shards         # the small one packs separately
+
+
 def test_main_delta_prints_neighbor_expanded_set(tmp_path, monkeypatch, capsys):
     repo = _wiki_repo(
         tmp_path,
@@ -126,3 +137,10 @@ def test_main_full_prints_one_shard_per_line(tmp_path, monkeypatch, capsys):
     assert lint_scope.main(["full"]) == 0
     lines = capsys.readouterr().out.splitlines()
     assert lines == ["a", "b"]            # one page per folder -> one shard per folder
+
+
+def test_main_full_rejects_non_integer_budget(tmp_path, monkeypatch, capsys):
+    repo = _wiki_repo(tmp_path, {"concepts/a.md": "x\n"})
+    monkeypatch.setenv("WIKI_CONFIG", str(repo / "wiki.config.yaml"))
+    assert lint_scope.main(["full", "notanint"]) == 2
+    assert "usage:" in capsys.readouterr().err
