@@ -50,3 +50,20 @@ def changed_since_last_lint(log_text: str) -> list[str]:
                 seen.add(slug)
                 changed.append(slug)
     return changed
+
+
+def one_hop_neighbors(changed, wiki_dir: Path) -> list[str]:
+    """`changed` plus their inbound + outbound [[wikilink]] neighbors."""
+    changed = set(changed)
+    pages = sorted(wiki_dir.rglob("*.md"))
+    text = {p: p.read_text(encoding="utf-8") for p in pages}
+    real_slugs = {lint_wiki._slug(p) for p in pages}
+    out = set(changed)
+    for p in pages:
+        slug = lint_wiki._slug(p)
+        targets = lint_wiki._wikilink_targets(text[p])
+        if slug in changed:
+            out |= targets            # outbound: pages this changed page links to
+        if targets & changed:
+            out.add(slug)             # inbound: pages that link to a changed page
+    return sorted(s for s in out if s in real_slugs)
