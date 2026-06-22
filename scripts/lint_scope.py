@@ -95,3 +95,26 @@ def shard_pages(wiki_dir: Path, budget_lines: int = 3500) -> list[list[str]]:
         if cur:
             shards.append(cur)
     return shards
+
+
+def main(argv=None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args or args[0] not in ("delta", "full"):
+        print("usage: lint_scope.py delta|full [budget_lines]", file=sys.stderr)
+        return 2
+    wiki = config.wiki_root() / "wiki"
+    if args[0] == "delta":
+        log = wiki / "log.md"
+        log_text = log.read_text(encoding="utf-8") if log.is_file() else ""
+        changed = changed_since_last_lint(log_text)
+        for slug in one_hop_neighbors(changed, wiki):
+            print(slug)
+        return 0
+    budget = int(args[1]) if len(args) > 1 else 3500
+    for shard in shard_pages(wiki, budget):
+        print(",".join(shard))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

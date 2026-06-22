@@ -1,3 +1,4 @@
+import textwrap
 from pathlib import Path
 
 import lint_scope
@@ -47,6 +48,24 @@ def _wiki(tmp_path, files):
     return wiki
 
 
+def _wiki_repo(tmp_path, files, log=""):
+    """Build a wiki repo (config + wiki/) and point $WIKI_CONFIG at it."""
+    (tmp_path / "wiki.config.yaml").write_text(textwrap.dedent("""
+        project: {key: CDS2ASV, name: "T", config_dir: ./config}
+        jira: {base_url: http://x, jql: "project = CDS2ASV"}
+        sources: []
+        lint: {flaggable_nouns: [], brand_nouns: [], era_terms: []}
+    """), encoding="utf-8")
+    wiki = tmp_path / "wiki"
+    wiki.mkdir()
+    (wiki / "log.md").write_text(log, encoding="utf-8")
+    for rel, text in files.items():
+        p = wiki / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+    return tmp_path
+
+
 def test_neighbors_include_inbound_and_outbound(tmp_path):
     wiki = _wiki(tmp_path, {
         "concepts/alpha.md": "links to [[beta]]",   # alpha -> beta (outbound)
@@ -87,3 +106,23 @@ def test_shard_packs_small_pages_together(tmp_path):
     })
     shards = lint_scope.shard_pages(wiki, budget_lines=150)
     assert shards == [["a", "b", "c"]]                               # all fit in one shard
+
+
+def test_main_delta_prints_neighbor_expanded_set(tmp_path, monkeypatch, capsys):
+    repo = _wiki_repo(
+        tmp_path,
+        {"concepts/alpha.md": "[[beta]]", "concepts/beta.md": "x", "concepts/gamma.md": "[[alpha]]"},
+        log="## [2026-06-01] lint | manual | clean\n## [2026-06-02] synth | A | pages: alpha\n",
+    )
+    monkeypatch.setenv("WIKI_CONFIG", str(repo / "wiki.config.yaml"))
+    assert lint_scope.main(["delta"]) == 0
+    out = capsys.readouterr().out.split()
+    assert out == ["alpha", "beta", "gamma"]
+
+
+def test_main_full_prints_one_shard_per_line(tmp_path, monkeypatch, capsys):
+    repo = _wiki_repo(tmp_path, {"concepts/a.md": "x\n", "entities/b.md": "y\n"})
+    monkeypatch.setenv("WIKI_CONFIG", str(repo / "wiki.config.yaml"))
+    assert lint_scope.main(["full"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == ["a", "b"]            # one page per folder -> one shard per folder
