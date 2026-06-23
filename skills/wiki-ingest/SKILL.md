@@ -98,9 +98,8 @@ reaches this size — see step 3; tunable). Batch sizes and model routing come f
 and lint subagents share `wiki/`, `index.md`, `log.md`; overlap corrupts them.
 
 **Index refresh (qmd):** `qmd update && qmd embed --max-batch-mb 1` at start and end of
-run (the 1 MB batch cap avoids `qmd embed` timeouts on slower machines). If
-missing or failing, continue and note `qmd-unavailable` — staleness is acceptable,
-a blocked ingest is not.
+run. If missing or failing, continue and note `qmd-unavailable` — staleness is
+acceptable, a blocked ingest is not.
 
 Chronological order is guaranteed by the extract invariant above; synth processes
 the queue front-to-back (oldest → newest).

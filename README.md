@@ -61,10 +61,11 @@ step 1 and do steps 2 and 3 for your checkout.
    qmd init
    qmd collection add raw  --name raw
    qmd collection add wiki --name wiki
-   qmd update && qmd embed --max-batch-mb 1
+   qmd update
+   while qmd status | grep -qE 'Pending: +[1-9]'; do qmd embed; done
    ```
-   The `--max-batch-mb 1` cap keeps `qmd embed` from timing out on slower machines; raise
-   or drop it if your hardware embeds comfortably in larger batches.
+   The first build can span several `qmd embed` passes on CPU, so the loop re-runs until
+   nothing is pending.
    The index lives in `.qmd/` (gitignored and machine-local, so rebuild it per machine).
    `/wiki-ingest` refreshes it at the start and end of a run; `/wiki-lint` refreshes it at
    the start of a run.

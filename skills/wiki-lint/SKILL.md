@@ -20,9 +20,8 @@ Python: it touches no model and no qmd index.
 
 ## 2. Semantic (Opus subagent) — delta (default) or `--full`
 
-First refresh the search index: `qmd update && qmd embed --max-batch-mb 1` (the 1 MB batch
-cap avoids `qmd embed` timeouts on slower machines). If `qmd` is missing or the
-refresh fails, continue and note `qmd-unavailable`; never block the lint.
+First refresh the search index: `qmd update && qmd embed --max-batch-mb 1`. If `qmd` is
+missing or the refresh fails, continue and note `qmd-unavailable`; never block the lint.
 
 Resolve the page set deterministically, then spawn the Opus engine over it. Only run when
 no synth/extract subagent is writing to `wiki/`.
