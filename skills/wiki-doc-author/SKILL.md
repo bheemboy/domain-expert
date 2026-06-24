@@ -1,6 +1,6 @@
 ---
 name: wiki-doc-author
-description: Author or update a single customer-facing online help page grounded in the domain-expert wiki. Use when the user asks to author, write, or update an online doc or help page. Drafts in conversation; writes to disk only on explicit "save as MD" command.
+description: Author or update a single customer-facing online help page grounded in the domain-expert wiki. Use when the user asks to author, write, or update an online doc or help page grounded in the wiki. Drafts in conversation; writes to disk only on explicit "save as MD" command.
 ---
 
 # Wiki Doc Author
@@ -147,8 +147,8 @@ or tone. Write NOTHING to disk until the user gives the explicit save command.
 
 When the user says **"save as MD"** (or an equivalent explicit command):
 
-1. **Pre-save gate** — run `${CLAUDE_PLUGIN_ROOT}/style-guide/review-checklist.md`
-   against the draft. Flag any failures. Ask whether to proceed or fix first.
+1. **Pre-save gate** — read and apply each item in `${CLAUDE_PLUGIN_ROOT}/style-guide/review-checklist.md`
+   to the draft (it is a checklist, not a script). Flag any failures. Ask whether to proceed or fix first.
 
 2. **Internal-identifier sweep** — apply `R-VOICE-09`: scan the draft for
    strings matching `identifier_patterns` (and the Jira project key from the
