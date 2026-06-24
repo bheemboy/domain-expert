@@ -42,7 +42,7 @@ term-table override in the Documentation Domain Context (CLAUDE.md / AGENTS.md).
 | Marketing language in release notes | Past-tense verb describing what the release did | R-RELNOTES-19 |
 | Invented release-notes section names ("Enhancements", "Defects fixed") | Added / Changed / Deprecated / Removed / Fixed / Security | R-RELNOTES-07 |
 | Major.minor versioning (`1.3`) | Full semver (`1.3.0`) | R-RELNOTES-01 |
-| Day-precision or numeric dates in release headings | Spelled-out month + year: `## 1.3.0 — April 2026` | R-RELNOTES-05 |
+| Day-precision or numeric dates in release headings | Keep a Changelog format: `## [1.3.0] - 2026-04-15` | R-RELNOTES-05 |
 | Defect entries starting with ticket number | Past-tense sentence; ticket in parens at end: `Fixed <thing>. (#1234)` | R-RELNOTES-08, R-RELNOTES-09 |
 | "Known issues" inside a Keep-a-Changelog release | Separate Known Issues page; link from the release header | R-RELNOTES-07 |
 | Editing the meaning of published release entries | Add a correction note in the next release | R-RELNOTES-22 |
@@ -51,12 +51,12 @@ term-table override in the Documentation Domain Context (CLAUDE.md / AGENTS.md).
 | Burying action-required guidance inside a bullet | Top-of-release Action required callout | R-RELNOTES-15 |
 | Contributor names or commit hashes in release notes | Issue numbers only | R-RELNOTES-20 |
 | Per-doc "What's New" / "Changelog" chapters | Single release-notes page | R-RELNOTES-21 |
-| Screenshots at 4K or high-DPI scaling (e.g., 200%) | Full-HD resolution at 100% scaling | R-SHOT-01 |
+| Screenshots at 4K or high-DPI scaling (e.g., 200%) | Sufficient resolution; don't upscale a small capture. | R-SHOT-07 |
 | Blur as redaction | Flat gray rectangle | R-SHOT-04 |
 | Screenshots from production with real customer data | Documentation-only test fixture | R-SHOT-05 |
-| Multiple annotation colors in one screenshot | One brand color per image; numbered callouts for sequencing | R-SHOT-06 |
-| JPEG for UI screenshots | PNG for UI; SVG for diagrams | R-SHOT-09 |
-| Screenshots of generic OS dialogs or browser chrome | Reserve screenshots for product UI and visually distinctive moments | R-SHOT-12 |
+| Multiple annotation colors in one screenshot | Consistent annotation style; don't rely on color alone; numbered callouts for sequence. | R-SHOT-09 |
+| JPEG for UI screenshots | PNG for UI; SVG for diagrams | R-SHOT-08 |
+| Screenshots of generic OS dialogs or browser chrome | Crop to the relevant region; reserve for product UI and visually distinctive moments | R-SHOT-03 |
 | Alt text starting with "Image of" or "Screenshot of" | Lead with the information conveyed | R-ALT-04 |
 | Filename as alt text | Describe what the image shows | R-ALT-02 |
 | Omitted alt on decorative images | Empty `alt=""` | R-ALT-03 |

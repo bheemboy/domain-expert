@@ -46,3 +46,5 @@ sentence case for the title.
 
 - **Do:** `:::warning Unsaved changes are lost`
 - **Don't:** `:::WARNING UNSAVED CHANGES ARE LOST`
+
+The generic `R-ADMON` label vocabulary (Note, Tip, Important, Caution, Warning) maps to Docusaurus as: Note→`:::note`, Tip→`:::tip`, Important→`:::info`, Caution/Warning→`:::warning`, and `:::danger` for the most severe cases. Use `:::info` wherever the guide calls for "Important" — the label differs but the intent is the same.
