@@ -19,10 +19,10 @@ the bundled style guide — direct, accurate, no internal jargon.
   ASK the user. Never fabricate product facts.
 - **Never silently clobber** — if the target file already exists, confirm
   overwrite or append before writing.
-- **No internal identifiers** — this is customer-facing output. Apply the
-  `R-VOICE-09` sweep: scan the draft for any strings matching the
-  `identifier_patterns` override (and the Jira project key) and remove or
-  redact them before saving.
+- **No internal identifiers** — this is customer-facing output. Apply
+  `R-VOICE-09`: strip internal identifiers using the `identifier_patterns`
+  override (from the Documentation Domain Context) and the Jira project key
+  (`project.key` in `wiki.config.yaml`).
 
 ---
 
@@ -150,9 +150,9 @@ When the user says **"save as MD"** (or an equivalent explicit command):
 1. **Pre-save gate** — read and apply each item in `${CLAUDE_PLUGIN_ROOT}/style-guide/review-checklist.md`
    to the draft (it is a checklist, not a script). Flag any failures. Ask whether to proceed or fix first.
 
-2. **Internal-identifier sweep** — apply `R-VOICE-09`: scan the draft for
-   strings matching `identifier_patterns` (and the Jira project key from the
-   Documentation Domain Context). Remove or redact any hits.
+2. **Internal-identifier sweep** — apply `R-VOICE-09`: strip internal
+   identifiers using the `identifier_patterns` override (from the Documentation
+   Domain Context) and the Jira project key (`project.key` in `wiki.config.yaml`).
 
 3. **Write the file** at the resolved target path from step 1.
    - If the target file already exists: confirm **overwrite** or **append**
