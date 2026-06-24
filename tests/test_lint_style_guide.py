@@ -42,3 +42,8 @@ def test_lint_dir_clean(tmp_path):
     (tmp_path / "a.md").write_text("- **R-VOICE-01:** second person.\n", encoding="utf-8")
     (tmp_path / "b.md").write_text("- **R-FMT-06:** bold the label.\n", encoding="utf-8")
     assert lsg.lint_dir(tmp_path) == []
+
+
+def test_flags_flexnet_capital_n():
+    out = lsg.lint_text("style-rules.md", "- **R-PROC-02:** Open FlexNet Operations.\n")
+    assert any("FlexNet" in f for f in out), out

@@ -15,7 +15,7 @@ from pathlib import Path
 # Vendor / product tokens that must never appear in a generic guide.
 # Case-sensitive with word boundaries so "the system" / "decide" don't match.
 _VENDOR = [
-    r"\bAgilent\b", r"\bOpenL[Aa]b\b", r"\bCID\b", r"\bAIC\b", r"\bFlexnet\b",
+    r"\bAgilent\b", r"\bOpenL[Aa]b\b", r"\bCID\b", r"\bAIC\b", r"\bFlex[Nn]et\b",
     r"\bCockpit\b", r"\bCorporate NIC\b", r"\bHouse NIC\b", r"\bAllow Changes\b",
     r"\bSYSTEM\b", r"\bSetup\.exe\b", r"\bOLS-", r"\bNET-", r"\bCAR-",
 ]
@@ -30,7 +30,6 @@ _DROPPED_ID_RE = re.compile(r"\bR-REVIEW-\d+\b|\bR-LINK-0[678]\b|\bR-LIST-07\b")
 
 # A rule definition line: "- **R-CAT-NN:** ...". Used for the uniqueness check.
 _RULE_DEF_RE = re.compile(r"\*\*(R-[A-Z0-9]+-\d+)\*\*|\*\*(R-[A-Z0-9]+-\d+):")
-_ANY_ID_RE = re.compile(r"\bR-[A-Z0-9]+-\d+\b")
 
 
 def lint_text(rel: str, text: str) -> list[str]:
