@@ -55,7 +55,7 @@ the folder).
   >
   > ```yaml
   > docs:
-  >   root: ../my-product-docs/docs
+  >   location: ../my-product-docs/docs
   > ```
   >
   > Then re-run `/wiki-doc-review`.
@@ -120,10 +120,11 @@ Fill the `## Scope` **single doc** option in
 - the doc path
 - its wiki grounding (the grounding pages retrieved in step 3b)
 - the lens (`factual`, `style`, or `both`)
-- the active platform profile — the `platform:` value from `wiki.config.yaml`
-  (default `docusaurus`) plus any Documentation Domain Context overrides
-  (`vendor_name`, `forbidden_role_names`, `identifier_patterns`, project term
-  table reference).
+- the active platform profile — the `platform:` value from the **Documentation
+  Domain Context** block in the wiki's `CLAUDE.md` (or `AGENTS.md`), where all
+  four override buckets live (`platform`, `vendor_name`, `forbidden_role_names`,
+  `identifier_patterns`, project term table reference). When `platform:` is
+  absent, the default is `docusaurus`.
 
 Produce findings inline; write the report per
 `${CLAUDE_PLUGIN_ROOT}/skills/wiki-doc-review/references/report-format.md`.
@@ -162,6 +163,4 @@ Mirrors `wiki-lint --full`.
 Report per `${CLAUDE_PLUGIN_ROOT}/skills/wiki-doc-review/references/report-format.md`.
 
 - READ-ONLY: never modify any doc, wiki page, or config file.
-- On `BLOCKED`: surface the blocker verbatim and stop — do not guess or
-  fabricate findings.
 - If a doc has no findings under the active lens, emit `CLEAN | <doc path>`.

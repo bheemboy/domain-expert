@@ -89,12 +89,10 @@ Append after all per-doc sections.
 - Clean: N
 ```
 
-Include `Clean` in totals so the count of docs reviewed equals
-`Incorrect + Stale + Missing (docs) + Style (docs) + Clean` — but note that
-"Clean" here means docs with zero findings across all active lenses, not a
-count of individual findings. Keep totals unambiguous: `Style (R-*)` is the
-count of individual style rule violations, not the number of docs with style
-issues.
+Include `Clean` in totals. Note that "Clean" means docs with zero findings
+across all active lenses, not a count of individual findings. Keep totals
+unambiguous: `Style (R-*)` is the count of individual style rule violations,
+not the number of docs with style issues.
 
 Under a single-lens run (`factual` or `style` only), omit the inactive lens's
 counts from the totals. `CLEAN | <path>` / `Clean` means a doc had no findings

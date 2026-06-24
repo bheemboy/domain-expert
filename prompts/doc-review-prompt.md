@@ -13,9 +13,11 @@ You are READ-ONLY: produce findings, never edit the document.
 - `<doc path/content>` — the documentation page under review.
 - `<wiki grounding>` — the relevant wiki pages retrieved for this doc.
 - `<lens>` — exactly one of `factual`, `style`, or `both`.
-- `<platform profile>` — the active `platform:` value (default `docusaurus`) plus
-  any Documentation Domain Context overrides (`vendor_name`, `forbidden_role_names`,
-  `identifier_patterns`, project term table reference).
+- `<platform profile>` — the active `platform:` value from the **Documentation
+  Domain Context** block in the wiki's `CLAUDE.md` (or `AGENTS.md`), where all
+  four override buckets live (`platform`, `vendor_name`, `forbidden_role_names`,
+  `identifier_patterns`, project term table reference). When `platform:` is
+  absent, the default is `docusaurus`.
 
 ## Scope
 
