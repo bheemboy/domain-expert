@@ -91,6 +91,8 @@ Commands are grouped by skill.
 | `/wiki-queue <path\|folder>` | Enqueues a path or folder without ingesting it. Takes every file, unfiltered; see [Force-enqueue](#force-enqueue) below. Same path rules as `/wiki-ingest <path\|folder>` above. Use it to stage several `raw/` drops before a single `/wiki-ingest`. |
 | `/wiki-queue backfill <repo> …` | Enqueues a repo's git-tracked files via `git ls-files`, so gitignored files and `.git/` internals are skipped. It also applies the `ignore:` globs (see [Ignore filtering](#ignore-filtering) below). It lists tracked files only, so it never picks up untracked files, unlike the force-enqueue forms above. Name a repo by its `wiki.config.yaml` source name (for example, `my-project`) or by path, and pass several to backfill more than one at once. Run it once when first adding a repo, since an incremental source scan enqueues nothing for an already-current clone. |
 | `/wiki-queue --dry-run` | Previews what a source scan would enqueue: it fetches, but does not pull, queue, or write state. |
+| `/wiki-story <title or description>` | Writes ONE user story (A/C, D/N, Q/N) grounded in the wiki. Drafts in the conversation so you can iterate; saves Markdown to `stories/` only when you say "save as MD". Target an existing epic with "into epic `<slug>`". |
+| `/wiki-epic <objective>` | Breaks a broad objective into an epic + child stories. Proposes a numbered breakdown, waits for your approval, then auto-writes the stories. Iterate in the conversation; "save as MD" writes a single `stories/<epic-slug>.md`. |
 
 ### Ignore filtering
 
@@ -115,6 +117,22 @@ Two commands force-enqueue, and both expand folders recursively:
 
 - `/wiki-queue <path|folder>` queues the files only.
 - `/wiki-ingest <path|folder>` queues the files, then ingests them.
+
+## Authoring stories and epics
+
+`/wiki-story` and `/wiki-epic` turn the wiki into authored work. They draft in
+the conversation — nothing is written until you say **"save as MD"** — and save
+to a flat `stories/` directory at the wiki repo root:
+
+```
+stories/
+  <epic-slug>.md                # an epic and its child stories, inline
+  <standalone-story-slug>.md    # a standalone story
+```
+
+Each story sits under a `## Story: <title>` boundary and ends with a `## Grounding`
+footer listing the wiki pages and Jira keys that informed it. Writing back to
+Jira is planned but not yet implemented; "add to Jira" reports that today.
 
 ## First-time priming
 
