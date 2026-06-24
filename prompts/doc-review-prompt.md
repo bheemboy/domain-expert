@@ -24,7 +24,7 @@ Review exactly the document named here — exhaustively, not by sampling:
 - **single doc** — Review ONLY this document: `<doc>`. The orchestrator has
   pre-loaded `<wiki grounding>` for it. Apply the selected lens, produce all
   findings, and write the report per the format at
-  `skills/wiki-doc-review/references/report-format.md`.
+  `${CLAUDE_PLUGIN_ROOT}/skills/wiki-doc-review/references/report-format.md`.
 - **shard `<i>` of `<n>`** — Review ONLY these documents: `<doc list>`. Apply the
   selected lens to each in turn. Return your findings to the synthesis step (do NOT
   write any report file); a final synthesis agent consolidates shards and writes
@@ -98,9 +98,9 @@ R-<CATEGORY>-NN: <one-line description of the issue and the exact fix>
 ## Output
 
 Produce findings in the report shape defined at
-`skills/wiki-doc-review/references/report-format.md`.
+`${CLAUDE_PLUGIN_ROOT}/skills/wiki-doc-review/references/report-format.md` (authoritative).
 
-Structure:
+**Illustrative shape** (see the referenced file for the complete schema):
 
 ```
 ## Factual findings
@@ -117,10 +117,9 @@ Structure:
 ## Style findings
 
 - R-<CATEGORY>-NN: <issue> | Fix: <one-line fix>
-```
 
-Omit any section heading (Incorrect / Stale / Missing / Style findings) if it has
-no entries.
+CLEAN | <doc path>
+```
 
 If the document has no findings under the selected lens, end with:
 ```
