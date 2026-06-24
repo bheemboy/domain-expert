@@ -69,7 +69,7 @@ imperative mood. The only first-person idiom permitted in customer-facing prose 
 
 - **R-GRAM-08:** Capitalize product, feature, and named-subsystem names. The authoritative capitalization for each term is in the wiki's `terminology/` and the terminology override.
 
-- **R-GRAM-09:** Avoid em-dashes (`—`). Prefer in order: commas, parentheses, colon, new sentence. When an em-dash genuinely serves the sentence better than any alternative, use it sparingly — one per page is already generous. When used, no spaces around it: `captured at startup—is logged`. Never two hyphens (`--`).
+- **R-GRAM-09:** Avoid em-dashes (`—`). Prefer in order: commas, parentheses, colon, new sentence. Use them sparingly, preferring commas, parentheses, or separate sentences. When used, no spaces around it: `captured at startup—is logged`. Never two hyphens (`--`).
 
 - **R-GRAM-10:** Use en-dashes (`–`) for ranges and compound modifiers only: `1–6 instruments`, `pages 23–25`, `2022–2026`. Never as a body-text break.
 
@@ -175,7 +175,7 @@ Every topic is one type. Pick the dominant one and write to it.
 
 - **R-PROC-08:** For multi-system procedures, use a bold inline label to identify which system the step applies to: **On the server**, **On the client machines**. Don't promote these labels to H3.
 
-- **R-PROC-09:** When a procedure has alternate paths, label each block with a bold lead-in: **To return all licenses:** … **To return part of your licenses:** …
+- **R-PROC-09:** When a procedure has alternate paths, label each block with a bold lead-in: **To export as PDF:** … **To export as CSV:** …
 
 - **R-PROC-10:** Include screenshots for visually distinctive UI moments (installer wizards, confirmation dialogs, custom UI). Don't screenshot trivial OS dialogs or menu paths that read cleanly in text.
 
