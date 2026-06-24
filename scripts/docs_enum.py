@@ -30,7 +30,8 @@ def enumerate_docs() -> list[Path]:
                 continue
             if excludes and first_match(rel, excludes) is not None:
                 continue
-            if f not in seen:
-                seen.add(f)
-                out.append(f)
+            rp = f.resolve()
+            if rp not in seen:
+                seen.add(rp)
+                out.append(rp)
     return out
