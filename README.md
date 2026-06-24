@@ -96,6 +96,11 @@ Commands are grouped by skill.
 | `/wiki-queue --dry-run` | Previews what a source scan would enqueue: it fetches, but does not pull, queue, or write state. |
 | `/wiki-story <title or description>` | Writes ONE user story (A/C, D/N, Q/N) grounded in the wiki. Drafts in the conversation so you can iterate; saves Markdown to `stories/` only when you say "save as MD". Target an existing epic with "into epic `<slug>`". |
 | `/wiki-epic <objective>` | Breaks a broad objective into an epic + child stories. Proposes a numbered breakdown, waits for your approval, then auto-writes the stories. Iterate in the conversation; "save as MD" writes a single `stories/<epic-slug>.md`. |
+| `/wiki-doc-review [<path\|folder>] [factual\|style\|both]` | Reviews customer-facing docs against the wiki (factual: stale/incorrect/missing) and the bundled style guide (style: R-… findings). On-demand, read-only; default scope = configured `docs:`, default lens = both. |
+
+### Reviewing online documentation
+
+The `/wiki-doc-review` command reviews your documented APIs, guides, and other customer-facing material against the wiki and a bundled style guide. It draws its doc locations from the `docs:` block in `wiki.config.yaml` (see [Start a new wiki for a product](#start-a-new-wiki-for-a-product) for setup).
 
 ### Ignore filtering
 
