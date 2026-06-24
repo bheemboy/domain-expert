@@ -24,6 +24,37 @@ business-relevant knowledge into interlinked markdown pages, and keep them curre
 - **Domain seed acronyms:** {{SEED_ACRONYMS}}
 - **Brand / rename-history terms:** {{BRAND_TERMS}}
 
+### Documentation Domain Context (optional — overrides for `/wiki-doc-*`)
+
+Optional overrides that tune the plugin's bundled generic style guide
+(`style-guide/`) for `/wiki-doc-review` and `/wiki-doc-author`. **All are
+optional.** With none set, the guide applies its industry-standard defaults
+(voice = second-person "you"; "we recommend" the only first-person idiom;
+`platform: docusaurus`; terminology drawn from the wiki's `terminology/`). The
+overrides ship **commented out** below — uncomment and set only what differs for
+this product. This block lives in §0 so `/wiki-init` upgrades never overwrite it.
+
+<!--
+documentation_domain_context:
+  # Vendor identity (R-VOICE-05): the name the product speaks AS in customer-facing
+  # prose (e.g. "Acme"); never "we" except "<vendor> recommends". forbidden_role_names
+  # are internal role names that must never appear in published docs.
+  vendor_name: <Vendor>
+  forbidden_role_names: [SYSTEM]
+  # Internal-identifier sweep (R-VOICE-09): extra regexes for source-side IDs to keep
+  # out of published docs. The Jira project key (project.key in wiki.config.yaml) is
+  # always swept; list additional patterns here.
+  identifier_patterns: ["(OPS|NET|CAR)-[0-9]+"]
+  # Publishing platform (R-LINK / R-ADMON): selects the profile under
+  # style-guide/platforms/. Default: docusaurus. Other shipped profile: commonmark.
+  platform: docusaurus
+  # Project term table: preferred-vs-avoid product terms layered ON TOP OF the wiki's
+  # terminology/ pages. Inline Markdown rows, or a path to a Markdown table file.
+  term_table: |
+    | Preferred | Avoid | Note |
+    | --- | --- | --- |
+-->
+
 ---
 
 ## 1. Raw → wiki
