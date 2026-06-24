@@ -193,3 +193,52 @@ def test_ignore_globs_appends_user_entries_and_dedups(tmp_path, monkeypatch):
     assert globs.count("**/*.min.js") == 1
     # defaults come before user-only entries
     assert globs.index("**/node_modules/**") < globs.index("ac_portal/local_modules/**")
+
+
+def _write_docs_cfg(tmp_path, monkeypatch, docs_yaml: str):
+    cfg = tmp_path / "wiki.config.yaml"
+    cfg.write_text(
+        "project:\n  key: T\n  name: T\n  config_dir: ~/.config/t-wiki\n"
+        "jira:\n  base_url: https://example.atlassian.net\n  jql: |\n    project = T\n"
+        + docs_yaml,
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WIKI_CONFIG", str(cfg))
+
+
+def test_docs_locations_empty_when_absent(tmp_path, monkeypatch):
+    _write_docs_cfg(tmp_path, monkeypatch, "")  # no docs: block
+    assert config.docs_locations() == []
+    assert config.docs_config() == {}
+
+
+def test_docs_locations_relative_resolves_to_wiki_root(tmp_path, monkeypatch):
+    _write_docs_cfg(tmp_path, monkeypatch, "docs:\n  location: ../cid-docs\n")
+    assert config.docs_locations() == [(tmp_path / "../cid-docs").resolve()]
+
+
+def test_docs_locations_absolute_and_home_kept(tmp_path, monkeypatch):
+    _write_docs_cfg(
+        tmp_path, monkeypatch,
+        "docs:\n  location:\n    - /opt/site-docs\n    - ~/work/help\n",
+    )
+    assert config.docs_locations() == [
+        Path("/opt/site-docs"),
+        Path("~/work/help").expanduser(),
+    ]
+
+
+def test_docs_include_exclude_defaults(tmp_path, monkeypatch):
+    _write_docs_cfg(tmp_path, monkeypatch, "docs:\n  location: ./site\n")
+    assert config.docs_include_globs() == ["**/*.md", "**/*.mdx"]
+    assert config.docs_exclude_globs() == []
+
+
+def test_docs_include_exclude_override(tmp_path, monkeypatch):
+    _write_docs_cfg(
+        tmp_path, monkeypatch,
+        'docs:\n  location: ./site\n  include:\n    - "docs/**/*.md"\n'
+        '  exclude:\n    - "**/node_modules/**"\n',
+    )
+    assert config.docs_include_globs() == ["docs/**/*.md"]
+    assert config.docs_exclude_globs() == ["**/node_modules/**"]

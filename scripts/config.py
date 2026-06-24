@@ -144,3 +144,42 @@ def ignore_globs() -> list[str]:
             seen.add(g)
             out.append(g)
     return out
+
+
+_DOCS_INCLUDE_DEFAULTS = ["**/*.md", "**/*.mdx"]
+
+
+def docs_config() -> dict:
+    """The optional `docs:` block: where the product's customer-facing online
+    help lives (a separate repo/folder, never the wiki). Empty when unset."""
+    return load().get("docs") or {}
+
+
+def docs_locations() -> list[Path]:
+    """Resolved docs-location paths. `location` may be a single string or a list.
+    A relative path resolves against the wiki repo root; absolute / ~ paths are
+    expanded and kept. Empty list when no `docs:` block is configured. These
+    paths are READ-ONLY to the plugin."""
+    raw = docs_config().get("location")
+    if not raw:
+        return []
+    items = [raw] if isinstance(raw, str) else list(raw)
+    out: list[Path] = []
+    for p in items:
+        path = Path(p).expanduser()
+        if not path.is_absolute():
+            path = (wiki_root() / path).resolve()
+        out.append(path)
+    return out
+
+
+def docs_include_globs() -> list[str]:
+    """Globs selecting doc files within each location (ignore.py semantics).
+    Defaults to Markdown / MDX."""
+    return docs_config().get("include") or list(_DOCS_INCLUDE_DEFAULTS)
+
+
+def docs_exclude_globs() -> list[str]:
+    """Globs excluding files within each location (ignore.py semantics).
+    Defaults to none."""
+    return docs_config().get("exclude") or []
