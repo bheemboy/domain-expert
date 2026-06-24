@@ -23,6 +23,10 @@ Python: it touches no model and no qmd index.
 First refresh the search index: `qmd update && qmd embed --max-batch-mb 1`. If `qmd` is
 missing or the refresh fails, continue and note `qmd-unavailable`; never block the lint.
 
+For related-page lookup during the semantic review, use the qmd-first gate: run
+`qmd status`; if qmd is present, use `qmd search` over the `wiki` collection;
+fall back to grep only when qmd is genuinely absent or `qmd status` errors.
+
 Resolve the page set deterministically, then spawn the Opus engine over it. Only run when
 no synth/extract subagent is writing to `wiki/`.
 

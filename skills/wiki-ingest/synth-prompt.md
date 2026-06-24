@@ -8,10 +8,12 @@ confidence tag to use. Work from the wiki schema. Do not touch any manifest.
 
 1. Read `CLAUDE.md` §3 (layout), §4 (provenance/recency/superseding), §6
    (index/log), and `wiki/index.md` (existing pages) so you update, not duplicate.
-   You may use `qmd query`/`qmd search` (project index over `raw` + `wiki`)
-   to find pages an import touches or earlier claims it supersedes — hits are
-   leads: open the file before asserting. `wiki/index.md` stays canonical for
-   whether a page exists; if qmd is unavailable, fall back to grep/index.md.
+   For lead-finding, run the cheap `qmd status` gate first. If qmd is present
+   (`.qmd/` exists, the binary runs, status is clean), USE `qmd query`/`qmd search`
+   (project index over `raw` + `wiki`) to find pages an import touches or earlier
+   claims it supersedes — hits are leads: open the file before asserting. Fall
+   back to grep/index.md ONLY when qmd is genuinely absent or `qmd status` errors.
+   `wiki/index.md` stays canonical for whether a page exists.
 2. For each path **in order**, run `python "${CLAUDE_PLUGIN_ROOT}/scripts/ingest_state.py" classify <path>`
    → `<kind>\t<read_target>`. Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" read-note <path>`;
    if it prints a non-empty triage note, treat it as a **focus hint** for where the business
