@@ -96,6 +96,7 @@ Commands are grouped by skill.
 | `/wiki-queue --dry-run` | Previews what a source scan would enqueue: it fetches, but does not pull, queue, or write state. |
 | `/wiki-story <title or description>` | Writes ONE user story (A/C, D/N, Q/N) grounded in the wiki. Drafts in the conversation so you can iterate; saves Markdown to `stories/` only when you say "save as MD". Target an existing epic with "into epic `<slug>`". |
 | `/wiki-epic <objective>` | Breaks a broad objective into an epic + child stories. Proposes a numbered breakdown, waits for your approval, then auto-writes the stories. Iterate in the conversation; "save as MD" writes a single `stories/<epic-slug>.md`. |
+| `/wiki-doc-author <title or page>` | Authors or updates ONE customer-facing help page, grounded in the wiki and written to the bundled style guide. Drafts in the conversation; saves Markdown to the configured `docs:` location only when you say "save as MD". |
 | `/wiki-doc-review [<path\|folder>] [factual\|style\|both]` | Reviews customer-facing docs against the wiki (factual: stale/incorrect/missing) and the bundled style guide (style: R-… findings). On-demand, read-only; default scope = configured `docs:`, default lens = both. |
 
 ### Reviewing online documentation
@@ -130,7 +131,7 @@ Two commands force-enqueue, and both expand folders recursively:
 
 `/wiki-story` and `/wiki-epic` turn the wiki into authored work. They draft in
 the conversation — nothing is written until you say **"save as MD"** — and save
-to a flat `stories/` directory at the wiki repo root:
+to a flat `stories/` directory at the wiki repo root. Separately, `/wiki-doc-author` authors customer-facing online help pages (distinct from Jira stories), saving under the `docs:` location.
 
 ```
 stories/
