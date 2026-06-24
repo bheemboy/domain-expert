@@ -24,33 +24,36 @@ them when justifying the shape to reviewers.
 ## Page structure
 
 - **R-TROUBLE-02:** A troubleshooting page follows the Symptom / Cause /
-  Resolution core (aligned to DITA 1.3 and the Microsoft KB pattern). Required
-  sections:
+  Resolution core (aligned to DITA 1.3 and the Microsoft KB pattern). This core
+  is **required**:
 
-  1. **Symptom** — what the reader observes: UI message, error code, log line,
-     or behavioral change.
-  2. **Confirm this is the right document** — a quick triage block (one or two
-     checks or commands) that routes the reader elsewhere if the symptom matches
-     a different page.
-  3. **Affected services** — what is and is not working while this failure
-     persists.
-  4. **Prerequisites** — what the reader needs before starting diagnostic steps
-     (access, permissions, tools).
-  5. **Diagnostic steps** — numbered investigation steps, each producing output
-     that routes the reader to a resolution or to a related page.
-  6. **Resolution** — corrective action(s), grouped by cause when more than one
-     is possible.
-  7. **Related documents** — see-also links and any escalation path.
+  - **Symptom** — what the reader observes: UI message, error code, log line,
+    or behavioral change.
+  - **Cause** — the underlying reason(s) for the symptom.
+  - **Resolution** — corrective action(s), grouped by cause when more than one
+    is possible.
 
-- **R-TROUBLE-03:** Optional sections:
+  A troubleshooting page typically includes, as needed, other sections such as:
 
-  - **Background** — between *Affected services* and *Prerequisites*, only when
-    the reader needs a short mental model to interpret diagnostic output. Keep to
-    one or two paragraphs; deeper conceptual material belongs in an explanation
-    topic.
-  - **Root cause** — between *Symptom* and *Confirm this is the right document*,
-    only when multiple sub-symptoms share one underlying cause and naming it up
-    front helps the reader decide quickly.
+  - **Confirm this is the right document** — a quick triage block (one or two
+    checks or commands) that routes the reader elsewhere if the symptom matches
+    a different page.
+  - **Affected services** — what is and is not working while this failure
+    persists.
+  - **Prerequisites** — what the reader needs before starting diagnostic steps
+    (access, permissions, tools).
+  - **Diagnostic steps** — numbered investigation steps, each producing output
+    that routes the reader to a resolution or to a related page.
+  - **Related documents** — see-also links and any escalation path.
+
+- **R-TROUBLE-03:** Additional optional sections may be included when needed:
+
+  - **Background** — when the reader needs a short mental model to interpret
+    diagnostic output. Keep to one or two paragraphs; deeper conceptual material
+    belongs in an explanation topic.
+  - **Root cause** — when multiple sub-symptoms share one underlying cause and
+    naming it up front helps the reader decide quickly. This may be included
+    early in the page as context before diagnostic steps.
 
 - **R-TROUBLE-04:** Troubleshooting is a recognized hybrid topic type (grounded
   in DITA 1.3 and the Microsoft KB pattern) that may combine instructional and
