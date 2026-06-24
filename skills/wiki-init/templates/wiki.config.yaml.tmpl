@@ -10,6 +10,21 @@ jira:
 
 sources: {{SOURCE_REPOS_YAML_LIST}}
 
+# Optional. Where this product's customer-facing online help (online docs) lives —
+# a SEPARATE repo or folder, never the wiki. Used by /wiki-doc-review and
+# /wiki-doc-author to locate "the documentation". A relative path resolves against
+# this wiki repo's root; absolute or ~ paths are used as-is. `location` may be a
+# single path or a list. `include`/`exclude` are gitignore-style globs over each
+# location-relative path (default include: Markdown/MDX; default exclude: none).
+# The plugin only ever READS these files during review.
+# docs:
+#   location: ../cid-docs
+#   include:
+#     - "docs/**/*.md"
+#     - "docs/**/*.mdx"
+#   exclude:
+#     - "**/node_modules/**"
+
 lint:
   flaggable_nouns: []
   brand_nouns: {{BRAND_TERMS_YAML_LIST}}
