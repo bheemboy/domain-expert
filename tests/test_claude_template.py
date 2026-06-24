@@ -41,6 +41,8 @@ def test_documentation_domain_context_ships_commented():
 
 def test_wiki_init_upgrade_injects_the_block_for_existing_repos():
     skill = (REPO / "skills" / "wiki-init" / "SKILL.md").read_text(encoding="utf-8")
-    # The upgrade path must mention adding the block when a pre-existing §0 lacks it,
-    # otherwise repos created before this feature never gain the overrides on upgrade.
+    # The upgrade path must CONDITIONALLY add the block when a pre-existing §0 lacks it
+    # (and append it), otherwise repos created before this feature never gain the
+    # overrides on upgrade. Guard the conditional + the injection, not just the name.
     assert "Documentation Domain Context" in skill
+    assert "if the existing" in skill.lower() and "append" in skill.lower()
