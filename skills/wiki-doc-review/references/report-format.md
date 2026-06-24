@@ -96,6 +96,10 @@ count of individual findings. Keep totals unambiguous: `Style (R-*)` is the
 count of individual style rule violations, not the number of docs with style
 issues.
 
+Under a single-lens run (`factual` or `style` only), omit the inactive lens's
+counts from the totals. `CLEAN | <path>` / `Clean` means a doc had no findings
+**under the active lens(es)**.
+
 ---
 
 ## Full example (illustrative)
@@ -138,5 +142,5 @@ CLEAN | /docs/api-reference.md
 - Stale: 0
 - Missing: 1
 - Style (R-*): 2
-- Clean: 1
+- Clean: 1  # Clean = docs with zero findings under the active lens(es)
 ```

@@ -63,10 +63,11 @@ the folder).
 - If `docs:` is present but the resolver still returns nothing, report the
   empty scope and stop — do not fabricate a file list.
 
-**Echo the exact file list** before proceeding. No silent sampling.
+**Echo the exact file list** before proceeding. No silent sampling. If no lens
+arg was given, the default is `both`.
 
 ```
-Reviewing N doc(s) [lens: <lens>]:
+Reviewing N doc(s) [lens: <lens> (default: both if omitted)]:
   <absolute path 1>
   <absolute path 2>
   …
@@ -113,13 +114,13 @@ Determine scope size from the file list resolved in step 2.
 
 ### Single doc
 
-Fill `${CLAUDE_PLUGIN_ROOT}/prompts/doc-review-prompt.md` — **single doc**
-scope option — with:
+Fill the `## Scope` **single doc** option in
+`${CLAUDE_PLUGIN_ROOT}/prompts/doc-review-prompt.md` with:
 
-- `<doc path/content>` — the full text of the doc.
-- `<wiki grounding>` — the grounding pages retrieved in step 3b.
-- `<lens>` — `factual`, `style`, or `both`.
-- `<platform profile>` — the `platform:` value from `wiki.config.yaml`
+- the doc path
+- its wiki grounding (the grounding pages retrieved in step 3b)
+- the lens (`factual`, `style`, or `both`)
+- the active platform profile — the `platform:` value from `wiki.config.yaml`
   (default `docusaurus`) plus any Documentation Domain Context overrides
   (`vendor_name`, `forbidden_role_names`, `identifier_patterns`, project term
   table reference).
@@ -131,16 +132,20 @@ Produce findings inline; write the report per
 
 Mirrors `wiki-lint --full`.
 
-1. Shard the file list using `doc_scope.shard_docs` (≤ 8 docs per shard, or
-   the default in the script). The shards are already deterministic — use them
+1. Shard the file list into groups of ~8 docs per shard. The orchestrator
+   resolves the doc list from step 2 with `python
+   "${CLAUDE_PLUGIN_ROOT}/scripts/doc_scope.py" <arg>` (one path per line),
+   then groups that list into shards either by calling
+   `doc_scope.shard_docs(paths, max_per_shard=8)` from Python, or by chunking
+   the printed paths into groups of ~8. The shards are deterministic — use them
    as-is.
 
 2. Spawn one **clean subagent** (`subagent_type: general-purpose`) per shard.
    Each subagent:
    - Receives the engine prompt
-     (`${CLAUDE_PLUGIN_ROOT}/prompts/doc-review-prompt.md`) filled with the
-     **shard `<i>` of `<n>`** scope option, the per-doc grounding for its
-     docs, the active lens, and the platform profile.
+     (`${CLAUDE_PLUGIN_ROOT}/prompts/doc-review-prompt.md`) with the `## Scope`
+     **shard `<i>` of `<n>`** option filled with that shard's doc list, the
+     per-doc grounding for its docs, the active lens, and the platform profile.
    - Returns its shard findings to the orchestrator. It does NOT write any
      report file.
 
