@@ -35,11 +35,16 @@ no config → **bootstrap**; config present → **upgrade**.
    - `wiki.config.yaml` from `templates/wiki.config.yaml.tmpl`.
    - `CLAUDE.md` from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl`.
    - `.gitignore` from `templates/gitignore`.
+   - `qmd_sync.sh` (repo root) from `templates/qmd_sync.sh`, copied verbatim (no
+     placeholders); ensure it stays executable (`chmod +x`).
    Substitute `{{TODAY}}` with the current ISO date.
 3. **Print remaining machine-local prereqs** (do not perform): create
    `<config_dir>/jira.token` (JIRA_EMAIL/JIRA_TOKEN), `pip install -r` the plugin's
    `requirements.txt`, install doc converters (`poppler-utils pandoc libreoffice`),
-   optional `qmd init` + `qmd collection add raw/wiki`.
+   optional search index — the human runs `./qmd_sync.sh` from the repo root in their
+   own terminal (it bootstraps `qmd init` + the `raw`/`wiki` collections, then embeds;
+   the first build can run for hours, so do NOT run it for them). Long build:
+   `nohup ./qmd_sync.sh > qmd_sync.log 2>&1 &`.
 4. Tell the user: prime sources with `/wiki-queue jira` and
    `/wiki-queue backfill <repo>`, then `/wiki-ingest`.
 

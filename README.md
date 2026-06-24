@@ -55,17 +55,20 @@ step 1 and do steps 2 and 3 for your checkout.
    ```
    You can instead export `JIRA_EMAIL` and `JIRA_TOKEN`. When both are present, the file wins.
 3. **Build the search index** *(optional)*. The qmd index speeds up related-page lookup
-   during ingest and lint; the skills fall back to `grep` when it is absent. Run once, from
-   the wiki repo root:
+   during ingest and lint; the skills fall back to `grep` when it is absent. `wiki-init`
+   scaffolds `qmd_sync.sh` into the repo root — run it once yourself, from the wiki repo
+   root, in your own terminal:
    ```
-   qmd init
-   qmd collection add raw  --name raw
-   qmd collection add wiki --name wiki
-   qmd update
-   while qmd status | grep -qE 'Pending: +[1-9]'; do qmd embed; done
+   ./qmd_sync.sh
    ```
-   The first build can span several `qmd embed` passes on CPU, so the loop re-runs until
-   nothing is pending.
+   It is idempotent: it bootstraps the index (`qmd init` + the `raw`/`wiki` collections)
+   on first run, then refreshes and embeds until nothing is pending. On CPU the first
+   build can run for **hours** across many `qmd embed` passes — far longer than an agent
+   tool call can stay open, so run it directly (not through Claude), backgrounding the
+   long first build if you like:
+   ```
+   nohup ./qmd_sync.sh > qmd_sync.log 2>&1 &
+   ```
    The index lives in `.qmd/` (gitignored and machine-local, so rebuild it per machine).
    `/wiki-ingest` refreshes it at the start and end of a run; `/wiki-lint` refreshes it at
    the start of a run.
