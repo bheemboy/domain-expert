@@ -37,3 +37,10 @@ def test_documentation_domain_context_ships_commented():
     close_c = after.index("-->", open_c)
     commented = after[open_c:close_c]
     assert "vendor_name" in commented and "platform: docusaurus" in commented
+
+
+def test_wiki_init_upgrade_injects_the_block_for_existing_repos():
+    skill = (REPO / "skills" / "wiki-init" / "SKILL.md").read_text(encoding="utf-8")
+    # The upgrade path must mention adding the block when a pre-existing §0 lacks it,
+    # otherwise repos created before this feature never gain the overrides on upgrade.
+    assert "Documentation Domain Context" in skill

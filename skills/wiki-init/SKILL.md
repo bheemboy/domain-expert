@@ -33,7 +33,10 @@ no config → **bootstrap**; config present → **upgrade**.
    Files scaffolded:
    - `wiki/` tree (index.md, overview.md, log.md, and the five category dirs).
    - `wiki.config.yaml` from `templates/wiki.config.yaml.tmpl` (keys: Jira base_url/jql, sources, config_dir, lint terms, optional docs: location).
-   - `CLAUDE.md` from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl`.
+   - `CLAUDE.md` from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl` — its §0 carries
+     the optional, commented **Documentation Domain Context** override block (vendor
+     identity, identifier sweep, `platform`, project term table) for `/wiki-doc-*`;
+     leave it commented (defaults apply), do not fill it from the interview.
    - `.gitignore` from `templates/gitignore`.
    - `qmd_sync.sh` (repo root) from `templates/qmd_sync.sh`, copied verbatim (no
      placeholders); ensure it stays executable (`chmod +x`).
@@ -52,7 +55,12 @@ no config → **bootstrap**; config present → **upgrade**.
 
 1. Read the repo's current `CLAUDE.md`; extract its `## 0. Project identity` block — that is, everything from the `## 0. Project identity` heading up to (but not including) the `## 1. Raw → wiki` heading.
 2. Render `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl` but **replace its §0 with the
-   repo's existing §0 verbatim**.
+   repo's existing §0 verbatim** — with one addition: if the existing §0 does **not**
+   already contain a `### Documentation Domain Context` subsection, append that block
+   (the commented `<!-- documentation_domain_context: … -->` block) from the
+   freshly-rendered template's §0 to the end of the preserved §0. This lets repos
+   created before the block existed gain it on upgrade without losing any hand-edited
+   §0 identity. If the subsection is already present, keep the repo's version verbatim.
 3. Show a diff of the generic body (§1+) and ask for confirmation before writing.
 4. **Never** touch `wiki/`, `raw/`, or `wiki.config.yaml`. Only `CLAUDE.md` changes.
 
