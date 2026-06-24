@@ -2,9 +2,8 @@
 
 These are **domain-neutral teaching examples**. They use generic nouns ("the
 device", "the management portal", "an Admin") to illustrate the format without
-tying to any product. For real, product-specific reference stories, load the
-host project's worked examples from its domain context (see SKILL.md → Domain
-context).
+tying to any product. For real, product-specific reference stories, ground in
+the wiki and prior tickets under `raw/imports/jira/` (see wiki-grounding.md).
 
 The two examples below show both common shapes: a device/operational story and a
 portal CRUD story. Study how A/C stays user-facing, how implementation detail
