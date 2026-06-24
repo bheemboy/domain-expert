@@ -374,3 +374,104 @@ Use the admonition set defined by the active publishing platform (see the platfo
 - **R-NUM-08:** Trademark symbols (® and ™) in running text: follow MS/Google guidance, which drops them from running text once the mark is established. In formal legal or compliance contexts, follow the trademark holder's requirements. Do not routinely append ® or ™ in body prose; use them where legally required or on first use in formal contexts.
 
 - **R-NUM-09:** Preserve source format for phone numbers, doc numbers, and identifiers.
+
+---
+
+## 12. Accessibility — structure (R-A11Y)
+
+- **R-A11Y-01:** Every figure that conveys information has a caption summarizing its content, not just labeling it. "Confirmation dialog with the **Continue** button highlighted", not "Figure 1".
+
+- **R-A11Y-02:** A procedure step must not depend solely on visual recognition of an unannotated screenshot. The step text alone must be sufficient.
+
+- **R-A11Y-03:** Color is never the sole indicator of meaning. Use icon + word + color for status. "**Red Error**" is acceptable because the word carries the meaning even without color.
+
+- **R-A11Y-04:** Tables have a header row. Headers are short and meaningful.
+
+- **R-A11Y-05:** Avoid layout-tied directional language ("the dialog on the left"). Prefer UI-label references ("the **Source** pane").
+
+- **R-A11Y-06:** Diagrams and architecture figures are accompanied by a text description (paragraph or bulleted component list) sufficient to convey the diagram's information.
+
+- **R-A11Y-07:** Headings establish structure for screen readers. Don't fake a heading with bold text on its own line. Use the heading element at the correct level. Don't skip levels (H2 → H4).
+
+- **R-A11Y-08:** Form controls in tutorials and how-tos refer to UI controls by their accessible name (the label a screen-reader user hears), not by visual position.
+
+---
+
+## 13. Alt text and WCAG targets (R-ALT)
+
+- **R-ALT-01:** Target the latest WCAG Level AA conformance.
+
+- **R-ALT-02:** Every informational image has alt text describing the information conveyed, not the image itself.
+  - **Do:** "Confirmation dialog showing 'Operation succeeded' and a **Continue** button."
+  - **Don't:** "Screenshot of a dialog."
+  - **Don't:** "screenshot-01.png"
+
+- **R-ALT-03:** Decorative images use empty alt (`alt=""`), not omitted alt. Omitted alt makes screen readers announce the filename.
+
+- **R-ALT-04:** Don't start alt text with "Image of" or "Screenshot of".
+
+- **R-ALT-05:** Alt text length budget: 155 characters or less. Longer descriptions of complex images go in a `<figcaption>` or paragraph after the figure, not in `alt`.
+
+- **R-ALT-06:** If the image's meaning is fully conveyed by the surrounding text and caption, alt text can be short or empty. Don't repeat the caption verbatim in alt.
+
+- **R-ALT-07:** Diagrams that convey relationships: alt text states the relationship in one sentence; a paragraph below the figure describes the components.
+
+- **R-ALT-08:** Text inside an image (annotation labels, screenshot UI text) meets WCAG AA contrast: 4.5:1 for normal text, 3:1 for large text (≥ 18pt or ≥ 14pt bold).
+
+- **R-ALT-09:** Don't introduce custom interactive widgets that bypass the framework's keyboard handling. Tabs, accordions, toggles must be reachable with Tab + Enter / Space.
+
+---
+
+## 14. Inclusive language (R-INCL)
+
+- **R-INCL-01:** Use gender-neutral language. Use *they / their* when the subject's gender is unknown. Not "he/she" or "s/he".
+
+- **R-INCL-02:** Prefer *allowlist / blocklist* over whitelist / blacklist. Prefer *primary / secondary* over master / slave.
+
+- **R-INCL-03:** Avoid idioms, metaphors, slang, and cultural references that don't translate.
+
+- **R-INCL-04:** Refer to people by role, not attribute: "the administrator", "the lab user", "the analyst".
+
+- **R-INCL-05:** Avoid ableist language ("crazy", "insane", "dummy variable", "sanity check"). Prefer "validity check" or "consistency check".
+
+---
+
+## 15. Localization-readiness (R-LOC)
+
+- **R-LOC-01:** Avoid layout-dependent expressions ("see below", "as shown above"). Use named cross-references.
+
+- **R-LOC-02:** Use unambiguous units and date formats (R-NUM-02, R-NUM-05).
+
+- **R-LOC-03:** Avoid puns, wordplay, alliteration, and culturally-specific examples (no sports metaphors, no holidays).
+
+- **R-LOC-05:** When content will be localized, consider avoiding contractions — they can be difficult to translate naturally. This is a conditional: contractions are otherwise encouraged (R-VOICE-06).
+
+- **R-LOC-06:** Consistent terminology — every alias is a term the translator must learn (see the wiki's `terminology/`).
+
+---
+
+## 16. Screenshots and image capture (R-SHOT)
+
+- **R-SHOT-01:** **Use screenshots sparingly** — only when an image explains what words can't or saves real effort; don't capture what the steps already say.
+
+- **R-SHOT-02:** **Never use an image of text** — render code, terminal output, errors, and config as real (copyable, searchable, translatable, accessible) text.
+
+- **R-SHOT-03:** **Crop to the relevant region** — the dialog/panel/control under discussion, not the full window, desktop, chrome, or taskbar.
+
+- **R-SHOT-04:** **Redact sensitive data with a solid, 100%-opaque fill**; never blur or pixelate (reversible). Flatten layered exports.
+
+- **R-SHOT-05:** **Use a documentation test fixture** with standardized sample data (`example.com`, demo hostnames) so captures carry no real PII.
+
+- **R-SHOT-06:** **Be consistent across a doc set** — same OS, theme, and chrome.
+
+- **R-SHOT-07:** **Capture at sufficient resolution; don't upscale** a small capture.
+
+- **R-SHOT-08:** **PNG for UI captures, SVG for diagrams**; avoid animated GIF (use MP4 for motion).
+
+- **R-SHOT-09:** **If you annotate, keep callouts in the margin**, not over the element; **don't rely on color alone**.
+
+- **R-SHOT-10:** **Descriptive caption/alt text** for every meaningful image: ≤155 chars, in-context, no "image of…", real punctuation; empty alt for decorative.
+
+- **R-SHOT-11:** **Keep screenshots current** — refresh when a label, control, or step no longer matches.
+
+- **R-SHOT-12:** **Store images as files in a dedicated assets directory**, referenced by path — no base64 in source, no hand-positioning with inline styles.
