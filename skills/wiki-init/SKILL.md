@@ -32,7 +32,7 @@ no config → **bootstrap**; config present → **upgrade**.
    Render each placeholder in the format its surrounding file requires at substitution time.
    Files scaffolded:
    - `wiki/` tree (index.md, overview.md, log.md, and the five category dirs).
-   - `wiki.config.yaml` from `templates/wiki.config.yaml.tmpl`.
+   - `wiki.config.yaml` from `templates/wiki.config.yaml.tmpl` (keys: Jira base_url/jql, sources, config_dir, lint terms, optional docs: location).
    - `CLAUDE.md` from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl`.
    - `.gitignore` from `templates/gitignore`.
    - `qmd_sync.sh` (repo root) from `templates/qmd_sync.sh`, copied verbatim (no
