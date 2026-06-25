@@ -40,11 +40,11 @@ documentation_domain_context:
   # prose (e.g. "Acme"); never "we" except "<vendor> recommends". forbidden_role_names
   # are internal role names that must never appear in published docs.
   vendor_name: <Vendor>
-  forbidden_role_names: [SYSTEM]
+  forbidden_role_names: []   # e.g. ["SYSTEM", "ROOT"] — internal role/actor names barred from customer-facing prose
   # Internal-identifier sweep (R-VOICE-09): extra regexes for source-side IDs to keep
   # out of published docs. The Jira project key (project.key in wiki.config.yaml) is
   # always swept; list additional patterns here.
-  identifier_patterns: ["(OPS|NET|CAR)-[0-9]+"]
+  identifier_patterns: []    # e.g. ["[A-Z]{2,4}-[0-9]+", "P/N [0-9]{6}"] — extra source-ID regexes BEYOND project.key
   # Publishing platform (R-LINK / R-ADMON): selects the profile under
   # style-guide/platforms/. Default: docusaurus. Other shipped profile: commonmark.
   platform: docusaurus

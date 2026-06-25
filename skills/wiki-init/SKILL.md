@@ -62,7 +62,14 @@ no config → **bootstrap**; config present → **upgrade**.
    created before the block existed gain it on upgrade without losing any hand-edited
    §0 identity. If the subsection is already present, keep the repo's version verbatim.
 3. Show a diff of the generic body (§1+) and ask for confirmation before writing.
-4. **Never** touch `wiki/`, `raw/`, or `wiki.config.yaml`. Only `CLAUDE.md` changes.
+4. **Refresh `qmd_sync.sh`** (repo root) from `templates/qmd_sync.sh` — it is plugin-owned
+   and copied verbatim (no placeholders), so it must track the plugin on upgrade:
+   - Missing → copy it in, `chmod +x`.
+   - Present and identical → nothing to do.
+   - Present but differs → show a diff and ask for confirmation before overwriting
+     (a user *may* have hand-edited it); on confirm, copy and keep it executable.
+5. **Never** touch `wiki/`, `raw/`, or `wiki.config.yaml`. Only `CLAUDE.md` and
+   `qmd_sync.sh` change.
 
 ## Guardrails
 - Never overwrite an existing `wiki.config.yaml` or non-empty `wiki/` during bootstrap;
