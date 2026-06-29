@@ -211,7 +211,8 @@ def _backfill_identities(args: list[str]) -> tuple[list[str], dict[str, int]]:
             raise ValueError(
                 f"--backfill: {a!r} is not a configured source name or a git repo")
         rels = list(git_changes.tracked_files(repo))
-        kept, ignored = ignore.partition(rels, globs)
+        repo_globs = globs + sources.docs_exclusion_globs(repo)
+        kept, ignored = ignore.partition(rels, repo_globs)
         kept_abs.extend(str((repo / f).resolve()) for f in kept)
         for g, c in ignored.items():
             ignored_total[g] = ignored_total.get(g, 0) + c

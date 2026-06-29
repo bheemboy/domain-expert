@@ -299,3 +299,23 @@ def test_detection_excludes_docs_under_source(tmp_path, monkeypatch):
     name, paths = out[0]
     assert name == "asv"
     assert [Path(p).name for p in paths] == ["user.py"]  # Documentation/guide.md excluded
+
+
+def test_backfill_excludes_docs_under_source(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    docs = repo / "Documentation"
+    docs.mkdir()
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)], docs_location=str(docs))
+
+    import importlib, check_for_changes, git_changes
+    importlib.reload(check_for_changes)
+
+    tracked = ["src/app/user.py", "Documentation/guide.md", "Documentation/sub/p.mdx"]
+    monkeypatch.setattr(git_changes, "tracked_files", lambda _repo: tracked)
+    monkeypatch.setattr(check_for_changes.git_changes, "tracked_files", lambda _repo: tracked)
+
+    kept, ignored = check_for_changes._backfill_identities([str(repo)])
+    kept_rel = sorted(str(Path(p).relative_to(repo)) for p in kept)
+    assert kept_rel == ["src/app/user.py"]
+    assert ignored.get("Documentation/**") == 2
