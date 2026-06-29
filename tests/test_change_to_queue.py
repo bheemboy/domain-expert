@@ -319,3 +319,28 @@ def test_backfill_excludes_docs_under_source(tmp_path, monkeypatch):
     kept_rel = sorted(str(Path(p).relative_to(repo)) for p in kept)
     assert kept_rel == ["src/app/user.py"]
     assert ignored.get("Documentation/**") == 2
+
+
+def test_dry_run_applies_ignore_and_docs_exclusion(tmp_path, monkeypatch, capsys):
+    import sys
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    docs = repo / "Documentation"
+    docs.mkdir()
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)], docs_location=str(docs))
+
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    monkeypatch.setattr(check_for_changes.sources, "detect_repos",
+                        lambda: [(repo, "asv")])
+    monkeypatch.setattr(check_for_changes.git_changes, "fetch", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "incoming_files",
+                        lambda _r: ["src/user.py", "logo.svg", "Documentation/guide.md"])
+    monkeypatch.setattr(check_for_changes, "enumerate_jira_candidates", lambda: [])
+    monkeypatch.setattr(sys, "argv", ["check_for_changes.py", "--dry-run"])
+
+    check_for_changes.main()
+    out = capsys.readouterr().out
+    assert "would enqueue 1 file(s) across 1 source(s)" in out  # only src/user.py kept
+    assert "ignored 2 file(s) by rule" in out  # logo.svg + Documentation/guide.md

@@ -309,9 +309,13 @@ def main():
                 except RuntimeError as e:
                     print(f"git: {name}: {e}")
                     continue
-                if incoming:
+                globs = config.ignore_globs() + sources.docs_exclusion_globs(repo_path)
+                kept, ignored = ignore.partition(incoming, globs)
+                if ignored:
+                    print(f"  {name}: ignored {sum(ignored.values())} file(s) by rule")
+                if kept:
                     nsrc += 1
-                    total += len(incoming)
+                    total += len(kept)
             print(f"git: would enqueue {total} file(s) across {nsrc} source(s)")
         print("=" * 60)
         return
