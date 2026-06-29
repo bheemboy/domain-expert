@@ -17,6 +17,11 @@ sources: {{SOURCE_REPOS_YAML_LIST}}
 # single path or a list. `include`/`exclude` are gitignore-style globs over each
 # location-relative path (default include: Markdown/MDX; default exclude: none).
 # The plugin only ever READS these files during review.
+# If a docs location resolves INSIDE a `sources` repo, the ingest pipeline
+# auto-excludes it (scan, backfill, and dry-run all skip it) so the docs are
+# never pulled into the wiki — preventing a wiki→docs→wiki loop. To deliberately
+# seed an existing system's online help once, point the path form at it:
+# `/wiki-ingest <docs-path>` (it bypasses ignore rules).
 # docs:
 #   location: ../cid-docs
 #   include:

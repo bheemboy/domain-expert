@@ -4,9 +4,12 @@ from datetime import date
 from pathlib import Path
 
 
-def _cfg(tmp_path, monkeypatch, repos=()):
+def _cfg(tmp_path, monkeypatch, repos=(), docs_location=None):
     cfg = tmp_path / "wiki.config.yaml"
     repo_lines = "".join(f"\n        - {r}" for r in repos)  # 8-space indent = dedent baseline
+    docs_block = (
+        f"\n        docs:\n          location: {docs_location}" if docs_location else ""
+    )
     cfg.write_text(textwrap.dedent(f"""
         project:
           key: TESTPROJ
@@ -16,7 +19,7 @@ def _cfg(tmp_path, monkeypatch, repos=()):
           base_url: https://example.atlassian.net
           jql: |
             project = TESTPROJ
-        sources:{repo_lines}
+        sources:{repo_lines}{docs_block}
     """))
     monkeypatch.setenv("WIKI_CONFIG", str(cfg))
     monkeypatch.setenv("STATE_DIR", str(tmp_path / "state"))
@@ -268,3 +271,93 @@ def test_enqueue_identities_reports_ignored_summary(tmp_path, monkeypatch, capsy
     assert "would enqueue 1" in out
     assert "ignored 4" in out
     assert "**/*.min.js" in out  # by-rule breakdown present
+
+
+def test_detection_excludes_docs_under_source(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "user.py").write_text("x = 1\n")
+    docs = repo / "Documentation"
+    docs.mkdir()
+    (docs / "guide.md").write_text("# guide\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)], docs_location=str(docs))
+
+    import importlib, check_for_changes, git_changes
+    importlib.reload(check_for_changes)
+
+    monkeypatch.setattr(check_for_changes.sources, "detect_repos",
+                        lambda: [(repo, "asv")])
+    monkeypatch.setattr(check_for_changes.git_changes, "head_sha", lambda _r: "old")
+    monkeypatch.setattr(check_for_changes.git_changes, "fetch", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "pull_ff", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "changed_files",
+                        lambda _r, _b: ["src/user.py", "Documentation/guide.md"])
+
+    out = check_for_changes.scan_git_candidates()
+    assert len(out) == 1
+    name, paths = out[0]
+    assert name == "asv"
+    assert [Path(p).name for p in paths] == ["user.py"]  # Documentation/guide.md excluded
+
+
+def test_backfill_excludes_docs_under_source(tmp_path, monkeypatch):
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    docs = repo / "Documentation"
+    docs.mkdir()
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)], docs_location=str(docs))
+
+    import importlib, check_for_changes, git_changes
+    importlib.reload(check_for_changes)
+
+    tracked = ["src/app/user.py", "Documentation/guide.md", "Documentation/sub/p.mdx"]
+    monkeypatch.setattr(git_changes, "tracked_files", lambda _repo: tracked)
+    monkeypatch.setattr(check_for_changes.git_changes, "tracked_files", lambda _repo: tracked)
+
+    kept, ignored = check_for_changes._backfill_identities([str(repo)])
+    kept_rel = sorted(str(Path(p).relative_to(repo)) for p in kept)
+    assert kept_rel == ["src/app/user.py"]
+    assert ignored.get("Documentation/**") == 2
+
+
+def test_dry_run_applies_ignore_and_docs_exclusion(tmp_path, monkeypatch, capsys):
+    import sys
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    docs = repo / "Documentation"
+    docs.mkdir()
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)], docs_location=str(docs))
+
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    monkeypatch.setattr(check_for_changes.sources, "detect_repos",
+                        lambda: [(repo, "asv")])
+    monkeypatch.setattr(check_for_changes.git_changes, "fetch", lambda _r: None)
+    monkeypatch.setattr(check_for_changes.git_changes, "incoming_files",
+                        lambda _r: ["src/user.py", "logo.svg", "Documentation/guide.md"])
+    monkeypatch.setattr(check_for_changes, "enumerate_jira_candidates", lambda: [])
+    monkeypatch.setattr(sys, "argv", ["check_for_changes.py", "--dry-run"])
+
+    check_for_changes.main()
+    out = capsys.readouterr().out
+    assert "would enqueue 1 file(s) across 1 source(s)" in out  # only src/user.py kept
+    assert "ignored 2 file(s) by rule" in out  # logo.svg + Documentation/guide.md
+
+
+def test_force_over_docs_under_source_still_enqueues(tmp_path, monkeypatch):
+    """Spec §6: the explicit path form (--force) bypasses the docs auto-exclusion,
+    so a docs: location nested in a source can still be deliberately seeded."""
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    docs = repo / "Documentation"
+    docs.mkdir()
+    (docs / "guide.md").write_text("# guide\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)], docs_location=str(docs))
+
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    expanded = check_for_changes._expand_identities([str(docs)])
+    assert [Path(p).name for p in expanded] == ["guide.md"]

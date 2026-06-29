@@ -131,7 +131,7 @@ def scan_git_candidates() -> list[tuple[str, list[str]]]:
         except RuntimeError as e:
             print(f"  Warning: {name}: {e} — skipping.", file=sys.stderr)
             continue
-        globs = config.ignore_globs()
+        globs = config.ignore_globs() + sources.docs_exclusion_globs(repo_path)
         kept, ignored = ignore.partition(files, globs)
         abs_paths = [str(repo_path / f) for f in kept if (repo_path / f).exists()]
         if ignored:
@@ -211,7 +211,8 @@ def _backfill_identities(args: list[str]) -> tuple[list[str], dict[str, int]]:
             raise ValueError(
                 f"--backfill: {a!r} is not a configured source name or a git repo")
         rels = list(git_changes.tracked_files(repo))
-        kept, ignored = ignore.partition(rels, globs)
+        repo_globs = globs + sources.docs_exclusion_globs(repo)
+        kept, ignored = ignore.partition(rels, repo_globs)
         kept_abs.extend(str((repo / f).resolve()) for f in kept)
         for g, c in ignored.items():
             ignored_total[g] = ignored_total.get(g, 0) + c
@@ -308,9 +309,13 @@ def main():
                 except RuntimeError as e:
                     print(f"git: {name}: {e}")
                     continue
-                if incoming:
+                globs = config.ignore_globs() + sources.docs_exclusion_globs(repo_path)
+                kept, ignored = ignore.partition(incoming, globs)
+                if ignored:
+                    print(f"  {name}: ignored {sum(ignored.values())} file(s) by rule")
+                if kept:
                     nsrc += 1
-                    total += len(incoming)
+                    total += len(kept)
             print(f"git: would enqueue {total} file(s) across {nsrc} source(s)")
         print("=" * 60)
         return
