@@ -115,6 +115,13 @@ Filtering applies only when a repo or source scan expands to many files. Naming 
 file's own path always enqueues that file, even if it matches a glob. Run any queue command
 with `--dry-run` to preview the kept-versus-ignored split.
 
+If a `docs:` location resolves *inside* one of your `sources` repos, the scan, `backfill`,
+and `--dry-run` auto-exclude it — no `ignore:` entry needed. Customer-facing online help is
+written *by* `/wiki-doc-author` and reviewed *by* `/wiki-doc-review`; re-ingesting it would
+create a wiki → docs → wiki loop and erode the wiki as an independent source of truth. To
+deliberately seed an existing system's online help once, name the path explicitly
+(`/wiki-ingest <docs-path>`), which bypasses all ignore filtering.
+
 ### Force-enqueue
 
 Force-enqueuing takes every file under the path or folder, with no `ignore:` filtering and
