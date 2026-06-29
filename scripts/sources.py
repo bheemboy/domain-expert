@@ -117,3 +117,24 @@ def repo_relative(path: str) -> str:
     if root is not None:
         return p.resolve().relative_to(root).as_posix()
     return p.name
+
+
+def docs_exclusion_globs(repo: Path) -> list[str]:
+    """Ignore globs for any configured ``docs:`` location that resolves UNDER ``repo``.
+
+    A docs location nested in a swept source must never be ingested — that would
+    create a wiki→docs→wiki loop (docs are written BY /wiki-doc-author and read BY
+    /wiki-doc-review, but never read back into the wiki automatically). Deriving the
+    exclusion here means the user needs no ``ignore:`` boilerplate. Returns a
+    repo-relative ``<rel>/**`` glob per overlapping location, or ``**`` when a
+    location IS the repo root; empty when none overlap. ignore.py semantics
+    (full-match over a repo-relative POSIX path)."""
+    repo_root = repo.resolve()
+    out: list[str] = []
+    for loc in config.docs_locations():
+        try:
+            rel = loc.resolve().relative_to(repo_root).as_posix()
+        except ValueError:
+            continue
+        out.append("**" if rel == "." else f"{rel}/**")
+    return out
