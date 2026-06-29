@@ -344,3 +344,20 @@ def test_dry_run_applies_ignore_and_docs_exclusion(tmp_path, monkeypatch, capsys
     out = capsys.readouterr().out
     assert "would enqueue 1 file(s) across 1 source(s)" in out  # only src/user.py kept
     assert "ignored 2 file(s) by rule" in out  # logo.svg + Documentation/guide.md
+
+
+def test_force_over_docs_under_source_still_enqueues(tmp_path, monkeypatch):
+    """Spec §6: the explicit path form (--force) bypasses the docs auto-exclusion,
+    so a docs: location nested in a source can still be deliberately seeded."""
+    repo = tmp_path / "asv"
+    (repo / ".git").mkdir(parents=True)
+    docs = repo / "Documentation"
+    docs.mkdir()
+    (docs / "guide.md").write_text("# guide\n")
+    _cfg(tmp_path, monkeypatch, repos=[str(repo)], docs_location=str(docs))
+
+    import importlib, check_for_changes
+    importlib.reload(check_for_changes)
+
+    expanded = check_for_changes._expand_identities([str(docs)])
+    assert [Path(p).name for p in expanded] == ["guide.md"]
