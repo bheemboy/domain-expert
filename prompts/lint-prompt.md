@@ -113,7 +113,7 @@ Mandatory semantic passes:
      **that** claim's cited `[code: <path>]` and reconcile (below). No repo
      search needed — the anchor is handed to you.
    - **Undisputed absolute/rule claim** (`only`, `always`, `never`, `must`,
-     `required`, `not supported`, `disabled`) — run a *bounded* `qmd`/`grep`
+     `required`, `not supported`, `disabled`, `all`, `none`) — run a *bounded* `qmd`/`grep`
      search over the source repos to find the governing code, then reconcile.
      This is how defect-symptom-as-rule (a now-fixed defect's symptom restated
      as current behaviour) is caught.
