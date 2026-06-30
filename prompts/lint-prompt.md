@@ -30,6 +30,7 @@ Audit exactly the page set named here — exhaustively, not by sampling:
   your findings to the synthesis step (do not write `log.md`); a final synthesis
   agent reconciles cross-shard contradictions, checks the summary pages against
   the whole set, and appends one `lint --full | manual` line to `wiki/log.md`.
+  Run Pass 8 (code-grounding) over these pages — it runs in this scope only.
 
 First read `wiki/index.md`, `wiki/overview.md`, `wiki/terminology/glossary.md`,
 and the most recent lint/synth entries in `wiki/log.md`. These summary pages are
@@ -98,6 +99,47 @@ Mandatory semantic passes:
    This is how a project (especially a fresh one with an empty `lint:` section) grows its
    config from observed renames instead of guessing up front. **Surface the proposal to
    the human; do NOT edit `wiki.config.yaml` yourself** — it is human-curated config.
+
+8. **Code-grounding (`--full` only).** Verify against live source the claims that
+   have never been checked against code — every `(ticket-only)` and
+   `(doc-stated)` claim on the in-scope pages — and reconcile under §4.4 (code
+   wins over any ticket regardless of date). **Skip this pass entirely in delta
+   scope.** The source repos are those listed in `wiki.config.yaml` (`sources:`).
+
+   A contradicting `(code-confirmed)` claim is a free signal; its absence is not.
+   Triage each un-confirmed claim:
+   - **Disputed** — a `(code-confirmed)` claim on the same page (or a 1-hop
+     neighbor) asserts something incompatible about the *same behaviour*. Open
+     **that** claim's cited `[code: <path>]` and reconcile (below). No repo
+     search needed — the anchor is handed to you.
+   - **Undisputed absolute/rule claim** (`only`, `always`, `never`, `must`,
+     `required`, `not supported`, `disabled`) — run a *bounded* `qmd`/`grep`
+     search over the source repos to find the governing code, then reconcile.
+     This is how defect-symptom-as-rule (a now-fixed defect's symptom restated
+     as current behaviour) is caught.
+   - **Undisputed ordinary fact** — leave it as-is and report it under
+     `residual-risk`. Do not search; do not auto-touch.
+
+   Reconcile, after actually reading the governing code:
+   - Code **confirms** → upgrade the claim to `(code-confirmed)` and add the
+     `[code: <repo-relative path>]` cite. *(auto-fix)*
+   - Code **contradicts**, genuine conflict about the same behaviour, code is
+     current → §4.4: scope the bullet (version/configuration/product name) or
+     move it to `## Superseded`, citing the code path. *(auto-fix)*
+   - Real but a **version/config/scope distinction** (both can be true) →
+     scope/qualify both, or `BLOCKED` if which-supersedes-which needs judgment.
+   - **Only appears** to conflict → leave both; note it.
+   - Code **not found / inconclusive** → leave the claim; report under
+     `residual-risk`. Never fabricate a confirmation; never delete an unverified
+     claim merely because you could not confirm it.
+
+   *Disputed ≠ wrong:* always open the cited code and confirm the conflict is
+   about the **same behaviour** before applying §4.4 — two claims may describe
+   different versions/configs and both be true. Resolve every `[code: path]` and
+   search target against the source repos (first existing root that contains the
+   repo-relative path wins). If no source repo is reachable, note
+   `source-unavailable`, skip grounding for that source, and never block (as with
+   `qmd-unavailable`).
 
 - **Auto-fix** only safe, unambiguous issues (missing cross-link, broken link
   target, obvious duplicate merge, index/glossary summary drift, clearly stale
