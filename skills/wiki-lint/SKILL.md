@@ -42,7 +42,11 @@ no synth/extract subagent is writing to `wiki/`.
 1. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_scope.py" full` → one shard (comma-separated
    slugs) per line.
 2. Spawn one Opus subagent per shard with the prompt's `## Scope` **full, shard i of n**
-   option; each returns findings (does not write `log.md`).
+   option; each returns findings (does not write `log.md`). Each shard agent also runs
+   **Pass 8 (code-grounding)**: it re-opens the configured source repos to verify
+   `(ticket-only)`/`(doc-stated)` claims under §4.4 — upgrading, scoping, or superseding
+   them — and degrades to `source-unavailable` (never blocks) if a source repo is
+   unreachable. Pass 8 runs in `--full` only; the delta tier never code-grounds.
 3. Spawn one final Opus synthesis subagent with all shard findings + `index.md`,
    `overview.md`, `glossary.md`: reconcile cross-shard contradictions, check the summary
    pages against the whole set, apply safe fixes, and append one `lint --full | manual` line.
