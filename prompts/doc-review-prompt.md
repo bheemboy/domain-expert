@@ -13,11 +13,9 @@ You are READ-ONLY: produce findings, never edit the document.
 - `<doc path/content>` — the documentation page under review.
 - `<wiki grounding>` — the relevant wiki pages retrieved for this doc.
 - `<lens>` — exactly one of `factual`, `style`, or `both`.
-- `<platform profile>` — the active `platform:` value from the **Documentation
-  Domain Context** block in the wiki's `CLAUDE.md` (or `AGENTS.md`), where all
-  four override buckets live (`platform`, `vendor_name`, `forbidden_role_names`,
-  `identifier_patterns`, project term table reference). When `platform:` is
-  absent, the default is `docusaurus`.
+- `<platform profile>` — the active `platform:` value (and any other override
+  buckets) from the **Documentation Domain Context** block in the wiki's
+  `CLAUDE.md` §0 (or `AGENTS.md`); default `docusaurus` when absent.
 
 ## Scope
 
@@ -100,33 +98,10 @@ R-<CATEGORY>-NN: <one-line description of the issue and the exact fix>
 ## Output
 
 Produce findings in the report shape defined at
-`${CLAUDE_PLUGIN_ROOT}/skills/wiki-doc-review/references/report-format.md` (authoritative).
+`${CLAUDE_PLUGIN_ROOT}/skills/wiki-doc-review/references/report-format.md`
+(authoritative — read it; do not improvise a shape). Every finding carries its
+one-line fix.
 
-**Illustrative shape** (see the referenced file for the complete schema):
-
-```
-## Factual findings
-
-### Incorrect
-- [<wiki page>] <claim in doc> → <what the wiki says> | Fix: <one-line fix>
-
-### Stale
-- [<wiki page>] <claim in doc> → <current wiki state> | Fix: <one-line fix>
-
-### Missing
-- [<wiki page>] <missing fact> | Fix: <one-line fix>
-
-## Style findings
-
-- R-<CATEGORY>-NN: <issue> | Fix: <one-line fix>
-
-CLEAN | <doc path>
-```
-
-If the document has no findings under the selected lens, end with:
-```
-CLEAN | <doc path>
-```
-
-Do not include both a findings list and a `CLEAN` line. The sentinel means zero
-findings — use it only when the section(s) covered by the active lens are empty.
+If the document has no findings under the selected lens, emit exactly
+`CLEAN | <doc path>` INSTEAD of a findings list — never both. The sentinel means
+zero findings under the active lens.

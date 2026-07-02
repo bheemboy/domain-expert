@@ -208,10 +208,10 @@ Each References entry **for a Jira/doc source** carries **exactly one link**: th
 ## 5. Operations
 
 Ingest is split into **extract** (awkward raw → import) and **synthesize** (imports + raw
-→ wiki), driven over the per-source work queues (§6) by the single `/ingest` skill (it
-runs `check_for_changes` when the queues are empty, then both phases). The `ingest` and
-`lint` skills in `.claude/skills/` carry the step-by-step procedure; this section states
-only the *policy* they implement.
+→ wiki), driven over the per-source work queues (§6) by the single `/wiki-ingest` skill (it
+runs `check_for_changes` when the queues are empty, then both phases). The plugin's
+`wiki-ingest` and `wiki-lint` skills carry the step-by-step procedure; this section
+states only the *policy* they implement.
 
 - **Extract** imports *awkward* raw into `raw/imports/` and never touches the
   wiki; each extract writes only its own import, so extracts run in parallel.
@@ -239,19 +239,20 @@ only the *policy* they implement.
   `ingest` skill's `classify` step) — applies recency/override (§4), sets/refreshes
   `title:` + `description:` frontmatter on every touched page, regenerates the `index.md`
   catalog (`scripts/build_index.py --write`), prepends to `log.md` (§6), skips
-  `business_relevant: false` imports, and runs a lint gate every 20.
+  `business_relevant: false` imports, and runs a size-gated delta lint (the
+  `wiki-ingest` lint gate fires once the pending changed-page set is large enough).
 
 - **Query — `ask <question>`** (default mode): read `index.md`, follow `[[links]]`,
   answer with inline `[KEY]` citations; offer to file a reusable answer back as a page.
 
-- **Lint — `/lint`**: *mechanical* (`scripts/lint_wiki.py`, deterministic) plus *semantic*
+- **Lint — `/wiki-lint`**: *mechanical* (`scripts/lint_wiki.py`, deterministic) plus *semantic*
   (an Opus engine over the canonical `prompts/lint-prompt.md`) in two scopes, each audited
   **exhaustively** over a deterministically-resolved page set (`scripts/lint_scope.py`):
   - **delta** (default; also the synth gate): pages changed since the last lint + their
     1-hop `[[neighbors]]`. The watermark is the newest `lint` bullet in `log.md` — the
     first from the top, since the log is newest-first. Logs `lint | auto` (gate) or
     `lint | manual`.
-  - **full** (`/lint --full`): the whole wiki, sharded so every page is read, with a
+  - **full** (`/wiki-lint --full`): the whole wiki, sharded so every page is read, with a
     cross-shard synthesis pass. Rare/on-demand. Logs `lint --full | manual`.
   Surface, do not auto-fix, issues needing human judgment.
 
@@ -323,7 +324,7 @@ any ticket), so a batch mixing kinds stays correct regardless of within-batch or
 
 The work-queue lives in `<config_dir>/state/` as per-source pairs `<source>.extract`/`<source>.synth`
 (sources: `jira`, `raw`, one per repo), produced by `scripts/check_for_changes.py` and
-drained by `/ingest`. Priority order `jira → raw → repos` (§5 synth ordering); a queue file
+drained by `/wiki-ingest`. Priority order `jira → raw → repos` (§5 synth ordering); a queue file
 is deleted when it empties. The same queues drive both the big legacy backlog and the
 ongoing forward trickle.
 

@@ -5,21 +5,12 @@ before drafting.
 
 ## qmd-first discovery (hard gate)
 
-Discovery over the wiki MUST prefer `qmd` whenever present. Do NOT default to grep.
-
-1. **Cheap presence gate — ALWAYS run it first:** `qmd status`.
-   Pass = `.qmd/` exists, the `qmd` binary runs, and status returns cleanly.
-2. **If qmd is present → USE it** for discovery:
-   - `qmd search "<objective / key nouns>"` (or `qmd query`) over the `wiki`
-     collection to find relevant concept / process / rule / entity / terminology pages.
-   - Also search the `raw` collection for prior Jira tickets to use as exemplars.
-   Treat hits as leads: open each page before relying on it.
-3. **Fall back to `grep` ONLY when qmd is genuinely absent** (no `.qmd/`, binary
-   missing, or `qmd status` errors). Note `qmd-unavailable`.
-
-- Do: run `qmd status`, then `qmd search …`.
-- Don't: skip straight to `grep -ri` when `.qmd/` is present. The status check IS
-  the cheap step.
+Follow the canonical gate in `${CLAUDE_PLUGIN_ROOT}/prompts/qmd-first-gate.md`:
+`qmd status` first; if qmd is present, `qmd search "<objective / key nouns>"`
+(or `qmd query`) over the `wiki` collection; grep ONLY when qmd is genuinely
+absent (note `qmd-unavailable`). For stories, ALSO search the `raw` collection
+for prior Jira tickets to use as exemplars. Treat hits as leads: open each page
+before relying on it.
 
 ## Reading the wiki as domain context
 

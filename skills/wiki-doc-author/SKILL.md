@@ -64,21 +64,11 @@ Do not invent a folder. After the user adds the block, proceed.
 
 ### 2. Ground (qmd-first gate)
 
-Retrieve the relevant wiki pages that cover the same topic area. These are the
-factual basis for the draft.
-
-1. **Cheap presence gate — ALWAYS run first:** `qmd status`.
-   Pass = `.qmd/` exists, the `qmd` binary runs, and status returns cleanly.
-2. **If qmd is present → USE it:**
-   - Extract two or three key nouns from the page title or the user's
-     description.
-   - `qmd search "<key nouns>"` over the `wiki` collection.
-   - Open each hit before relying on it.
-3. **Fall back to `grep` ONLY when qmd is genuinely absent** (no `.qmd/`,
-   binary missing, or `qmd status` errors). Note `qmd-unavailable`.
-
-Do NOT default to grep when `.qmd/` is present. The `qmd status` check IS the
-cheap step.
+Retrieve the relevant wiki pages that cover the same topic area — the factual
+basis for the draft. Follow the canonical gate in
+`${CLAUDE_PLUGIN_ROOT}/prompts/qmd-first-gate.md` (`qmd status` first; search
+two or three key nouns from the page title or the user's description over the
+`wiki` collection; grep only when qmd is genuinely absent).
 
 If the topic references something not in the wiki, **ASK — do not invent.**
 
@@ -119,20 +109,11 @@ Write to the bundled style guide at `${CLAUDE_PLUGIN_ROOT}/style-guide/`
 - **Platform mechanics** (admonition syntax, front-matter, code fences) —
   `platforms/<profile>.md`
 
-**Override buckets** — all four come from the **Documentation Domain Context**
-block in the wiki's `CLAUDE.md` (or `AGENTS.md`), scaffolded by `wiki-init`.
-The `wiki.config.yaml` carries only the `docs:` location, not overrides.
-
-| Key | Effect |
-|---|---|
-| `platform` | Selects the platform profile (default: `docusaurus`) |
-| `vendor_name` / `forbidden_role_names` | Vendor identity; avoid forbidden names |
-| `identifier_patterns` | Regex list for internal-identifier sweep (R-VOICE-09) |
-| Project term table | Product/feature names from the wiki's `terminology/` folder |
-
-When no Documentation Domain Context is present, use industry-standard defaults:
-voice = second-person "you"; "we recommend" is the only first-person idiom
-permitted in customer-facing prose.
+**Override buckets** — apply the **Documentation Domain Context** block from the
+wiki's `CLAUDE.md` §0 (or `AGENTS.md`): it defines all four buckets (`platform`,
+`vendor_name`/`forbidden_role_names`, `identifier_patterns`, project term table)
+and the industry-standard defaults that apply when it is absent or commented out.
+`wiki.config.yaml` carries only the `docs:` location, never overrides.
 
 ---
 
@@ -154,30 +135,13 @@ When the user says **"save as MD"** (or an equivalent explicit command):
    identifiers using the `identifier_patterns` override (from the Documentation
    Domain Context) and the Jira project key (`project.key` in `wiki.config.yaml`).
 
-3. **Write the file** at the resolved target path from step 1.
+3. **Sources footer** — end the page with a `## Sources` footer listing the wiki
+   pages used as grounding, so reviewers can trace accuracy claims.
+
+4. **Write the file** at the resolved target path from step 1 (new page: the
+   `doc_target.py` proposal; existing page: the path the user named).
    - If the target file already exists: confirm **overwrite** or **append**
      before writing. Never silently clobber.
 
-4. **Commit** — if the docs location is inside a git repository, commit the
+5. **Commit** — if the docs location is inside a git repository, commit the
    new or updated file.
-
----
-
-## Batch mode (optional — v1 note)
-
-When the user provides several page titles from one objective, note that this
-skill can fan out — one research→draft agent per page (Workflow steps 2–4) —
-and then synthesize. Saving still requires the explicit "save as MD" command
-for each page. The v1 focus is single-page interactive authoring.
-
----
-
-## Saving (MD)
-
-- **New page:** write to the path proposed by `doc_target.py` (slug from the
-  title, under the first `docs:` location).
-- **Existing page:** write to the path the user named; confirm overwrite or
-  append if the file exists.
-- If the target is inside a git repo, commit after writing.
-- End every page with a `## Sources` footer listing the wiki pages used as
-  grounding, so reviewers can trace accuracy claims.

@@ -89,19 +89,10 @@ never block the review.
 ### 3b. Per-doc grounding (qmd-first gate)
 
 For each doc to be reviewed, retrieve the relevant wiki pages that cover the
-same topic area.
-
-1. **Cheap presence gate — ALWAYS run it first:** `qmd status`.
-   Pass = `.qmd/` exists, the `qmd` binary runs, and status returns cleanly.
-2. **If qmd is present → USE it:**
-   - Extract two or three key nouns from the doc's title or opening paragraph.
-   - `qmd search "<key nouns>"` over the `wiki` collection.
-   - Open each hit before relying on it.
-3. **Fall back to `grep` ONLY when qmd is genuinely absent** (no `.qmd/`,
-   binary missing, or `qmd status` errors). Note `qmd-unavailable`.
-
-Do NOT default to grep when `.qmd/` is present. The `qmd status` check IS the
-cheap step.
+same topic area, following the canonical gate in
+`${CLAUDE_PLUGIN_ROOT}/prompts/qmd-first-gate.md` (`qmd status` first; search
+two or three key nouns from the doc's title or opening paragraph over the
+`wiki` collection; grep only when qmd is genuinely absent).
 
 Also search the wiki for topics the doc covers — hits that do NOT appear in the
 doc are **Missing** candidates for the factual lens.
@@ -121,10 +112,8 @@ Fill the `## Scope` **single doc** option in
 - its wiki grounding (the grounding pages retrieved in step 3b)
 - the lens (`factual`, `style`, or `both`)
 - the active platform profile — the `platform:` value from the **Documentation
-  Domain Context** block in the wiki's `CLAUDE.md` (or `AGENTS.md`), where all
-  four override buckets live (`platform`, `vendor_name`, `forbidden_role_names`,
-  `identifier_patterns`, project term table reference). When `platform:` is
-  absent, the default is `docusaurus`.
+  Domain Context** block in the wiki's `CLAUDE.md` §0 (or `AGENTS.md`); default
+  `docusaurus` when absent.
 
 Produce findings inline; write the report per
 `${CLAUDE_PLUGIN_ROOT}/skills/wiki-doc-review/references/report-format.md`.
