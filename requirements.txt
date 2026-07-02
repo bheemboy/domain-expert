@@ -1,3 +1,9 @@
 pyyaml
 requests
 pytest
+
+# Layout-aware PDF conversion for doc ingest (correct multi-column reading
+# order, real markdown tables). Heavy install (torch + layout models, ~2 GB).
+# doc_convert falls back to pdftotext -layout per file only when docling
+# itself fails on a document (corrupt/encrypted PDF) — not a no-install path.
+docling
