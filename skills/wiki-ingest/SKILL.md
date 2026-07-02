@@ -147,8 +147,9 @@ Run the start-of-run index refresh, then loop until budget reached or
    d. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_scope.py" delta` → the page list itself (one
       slug per line). Spawn one Opus subagent (`model: opus`) with
       `${CLAUDE_PLUGIN_ROOT}/prompts/lint-prompt.md`, filling the `## Scope` **delta** option
-      with that page list (from step d) and the mechanical output. It appends a `lint | auto`
-      line. Wait. `CLEAN`/`FIXED` → continue; `BLOCKED` → STOP.
+      with that page list (from step d) and the mechanical output. It records a
+      `- lint | auto` bullet in `log.md` (prepended under today's date heading,
+      newest first). Wait. `CLEAN`/`FIXED` → continue; `BLOCKED` → STOP.
 
 ## Report
 
