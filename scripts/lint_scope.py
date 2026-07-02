@@ -23,24 +23,21 @@ from pathlib import Path
 import config
 import lint_wiki
 
-# The watermark is the last *deliberate* lint line. `lint` and `lint --full`
+# The watermark is the newest *deliberate* lint event. `lint` and `lint --full`
 # match; a hypothetical `synth-lint` starts with "synth-" so it never matches.
+# Two log formats are supported: legacy (one `## [DATE] op | …` heading per
+# event, appended oldest-first) and OKF (`## YYYY-MM-DD` date headings with
+# `- op | …` bullets, strictly newest-first — see CLAUDE.md §6).
 _LINT_LINE_RE = re.compile(r"^## \[[^\]]*\] lint\b")
+_OKF_DATE_RE = re.compile(r"^## \d{4}-\d{2}-\d{2}\s*$")
+_OKF_LINT_BULLET_RE = re.compile(r"^- lint\b")
 # Event lines that changed the wiki carry a `pages:` field; `pages read:` (query)
 # has a space before the colon, so the literal `pages:` will not match it.
 _PAGES_RE = re.compile(r"\bpages:\s*([^|]+)")
 
 
-def changed_since_last_lint(log_text: str) -> list[str]:
-    """Page slugs from `pages:` fields appended after the last deliberate lint."""
-    lines = log_text.splitlines()
-    last_lint = -1
-    for i, line in enumerate(lines):
-        if _LINT_LINE_RE.match(line):
-            last_lint = i  # keep the LAST one, by append position
-    changed: list[str] = []
-    seen: set[str] = set()
-    for line in lines[last_lint + 1:]:
+def _collect_pages(lines, seen: set[str], changed: list[str]) -> None:
+    for line in lines:
         m = _PAGES_RE.search(line)
         if not m:
             continue
@@ -49,6 +46,30 @@ def changed_since_last_lint(log_text: str) -> list[str]:
             if slug and slug not in seen:
                 seen.add(slug)
                 changed.append(slug)
+
+
+def changed_since_last_lint(log_text: str) -> list[str]:
+    """Page slugs from `pages:` fields of events newer than the last deliberate lint."""
+    lines = log_text.splitlines()
+    changed: list[str] = []
+    seen: set[str] = set()
+
+    if any(_OKF_DATE_RE.match(l) for l in lines):
+        # OKF newest-first log: everything ABOVE the first lint bullet is newer.
+        newer: list[str] = []
+        for line in lines:
+            if _OKF_LINT_BULLET_RE.match(line):
+                break
+            newer.append(line)
+        _collect_pages(newer, seen, changed)
+        return changed
+
+    # Legacy append-order log: everything AFTER the last lint heading is newer.
+    last_lint = -1
+    for i, line in enumerate(lines):
+        if _LINT_LINE_RE.match(line):
+            last_lint = i  # keep the LAST one, by append position
+    _collect_pages(lines[last_lint + 1:], seen, changed)
     return changed
 
 
