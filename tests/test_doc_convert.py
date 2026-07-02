@@ -89,6 +89,63 @@ def test_docling_returns_none_without_package(tmp_path):
     assert doc_convert._docling(f) is None
 
 
+class _FakeDoclingConverter:
+    """Stands in for docling's DocumentConverter via the module-level singleton."""
+
+    def __init__(self, status, md, delay=0.0):
+        import types as _t
+        self._delay = delay
+        self._result = _t.SimpleNamespace(
+            status=status,
+            document=_t.SimpleNamespace(export_to_markdown=lambda: md),
+        )
+
+    def convert(self, source, **kwargs):
+        import time as _time
+        if self._delay:
+            _time.sleep(self._delay)
+        return self._result
+
+
+def test_docling_partial_success_counts_as_failure(monkeypatch, tmp_path):
+    # Some pages failed -> PARTIAL_SUCCESS -> must NOT be accepted silently.
+    from docling.datamodel.base_models import ConversionStatus
+    f = tmp_path / "partial.pdf"
+    f.write_bytes(b"%PDF-1.4 dummy")
+    monkeypatch.setattr(doc_convert, "_docling_converter",
+                        _FakeDoclingConverter(ConversionStatus.PARTIAL_SUCCESS, "# some pages"))
+    assert doc_convert._docling(f) is None
+
+
+def test_docling_success_status_returns_markdown(monkeypatch, tmp_path):
+    from docling.datamodel.base_models import ConversionStatus
+    f = tmp_path / "ok.pdf"
+    f.write_bytes(b"%PDF-1.4 dummy")
+    monkeypatch.setattr(doc_convert, "_docling_converter",
+                        _FakeDoclingConverter(ConversionStatus.SUCCESS, "# all good\n"))
+    assert doc_convert._docling(f) == "# all good\n"
+
+
+def test_docling_hang_degrades_to_failure(monkeypatch, tmp_path):
+    # A conversion that outlives its timeout is abandoned -> None (fallback turn).
+    import time
+    from docling.datamodel.base_models import ConversionStatus
+    f = tmp_path / "hang.pdf"
+    f.write_bytes(b"%PDF-1.4 dummy")
+    monkeypatch.setattr(doc_convert, "_docling_converter",
+                        _FakeDoclingConverter(ConversionStatus.SUCCESS, "# late", delay=2.0))
+    t0 = time.time()
+    assert doc_convert._docling(f, timeout=0.2) is None
+    assert time.time() - t0 < 1.5
+
+
+def test_docling_timeout_scales_with_page_count():
+    # Base timeout for unknown/small docs; long manuals get per-page headroom.
+    assert doc_convert._timeout_for(None) == 600
+    assert doc_convert._timeout_for(5) == 600
+    assert doc_convert._timeout_for(40) == 1200
+
+
 def test_convert_whitespace_only_is_none(monkeypatch, tmp_path):
     # A valid PDF that yields only whitespace/form-feed (e.g. a scanned image)
     # must be treated as "no text" -> None, so the caller records a media gap.

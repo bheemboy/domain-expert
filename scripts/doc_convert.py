@@ -21,6 +21,7 @@ and degrades the whole PDF path only where docling was never installed.
 import shutil
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 PDF_EXTS = {".pdf"}
@@ -46,14 +47,55 @@ def _pdftotext(pdf: Path) -> str | None:
 
 _docling_converter = None  # lazy singleton: model load is expensive, reuse across calls
 
+# docling runs in-process (no subprocess timeout like _run), so a hung parse is
+# bounded by an abandonable worker thread instead. ~11 s/page on CPU observed;
+# 30 s/page leaves generous headroom before declaring a hang.
+_DOCLING_BASE_TIMEOUT = 600
+_DOCLING_PER_PAGE_TIMEOUT = 30
 
-def _docling(pdf: Path) -> str | None:
+
+def _page_count(pdf: Path) -> int | None:
+    if not shutil.which("pdfinfo"):
+        return None
+    try:
+        r = _run(["pdfinfo", str(pdf)])
+        for line in r.stdout.splitlines() if r.returncode == 0 else []:
+            if line.startswith("Pages:"):
+                return int(line.split()[1])
+    except Exception:
+        pass
+    return None
+
+
+def _timeout_for(pages: int | None) -> float:
+    return max(_DOCLING_BASE_TIMEOUT, (pages or 0) * _DOCLING_PER_PAGE_TIMEOUT)
+
+
+def _docling(pdf: Path, timeout: float | None = None) -> str | None:
     global _docling_converter
     try:
         if _docling_converter is None:
             from docling.document_converter import DocumentConverter
             _docling_converter = DocumentConverter()
-        md = _docling_converter.convert(str(pdf)).document.export_to_markdown()
+        from docling.datamodel.base_models import ConversionStatus
+
+        done: list[tuple] = []
+
+        def work():
+            res = _docling_converter.convert(str(pdf), raises_on_error=False)
+            done.append((res.status, res.document.export_to_markdown()))
+
+        t = threading.Thread(target=work, daemon=True)
+        t.start()
+        t.join(timeout if timeout is not None else _timeout_for(_page_count(pdf)))
+        if t.is_alive() or not done:
+            # hang (thread abandoned) or the worker raised before appending
+            return None
+        status, md = done[0]
+        if status != ConversionStatus.SUCCESS:
+            # FAILURE, and also PARTIAL_SUCCESS: silently missing pages is worse
+            # than falling back to pdftotext for the whole document
+            return None
         return md if md and md.strip() else None
     except Exception:
         return None
