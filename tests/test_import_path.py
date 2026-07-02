@@ -50,3 +50,21 @@ def test_has_import_true_false(tmp_path, monkeypatch):
     (tmp_path / "jira" / "CDS2ASV-1.md").write_text("---\nkey: CDS2ASV-1\n---\n")
     assert ingest_state.has_import("CDS2ASV-1") is True
     assert ingest_state.has_import("src/main.py") is False  # ValueError -> False
+
+
+def test_is_import_detection(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "wiki_root", lambda: tmp_path)
+    monkeypatch.setenv("IMPORTS_DIR", str(tmp_path / "raw" / "imports"))
+    pdfs = tmp_path / "raw" / "pdfs"
+    pdfs.mkdir(parents=True)
+    (pdfs / "guide.pdf").write_bytes(b"x")
+    (pdfs / "guide.md").write_text("in-place import of guide.pdf")
+    (pdfs / "notes.md").write_text("hand-written prose, no binary sibling")
+    jira_imports = tmp_path / "raw" / "imports" / "jira"
+    jira_imports.mkdir(parents=True)
+    (jira_imports / "PROJ-1.md").write_text("ticket import")
+
+    assert ingest_state.is_import(str(pdfs / "guide.md")) is True      # in-place import
+    assert ingest_state.is_import(str(pdfs / "guide.pdf")) is False    # the source itself
+    assert ingest_state.is_import(str(pdfs / "notes.md")) is False     # legit prose
+    assert ingest_state.is_import(str(jira_imports / "PROJ-1.md")) is True

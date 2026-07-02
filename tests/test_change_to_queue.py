@@ -361,3 +361,24 @@ def test_force_over_docs_under_source_still_enqueues(tmp_path, monkeypatch):
 
     expanded = check_for_changes._expand_identities([str(docs)])
     assert [Path(p).name for p in expanded] == ["guide.md"]
+
+
+def test_expand_identities_skips_import_files(tmp_path, monkeypatch):
+    """Force-enqueueing a folder must not enqueue extract-owned imports: the
+    in-place .md next to a binary doc under raw/ is the doc's import, not an
+    independent source — enqueueing both double-ingests every document."""
+    _cfg(tmp_path, monkeypatch, [])
+    monkeypatch.setenv("IMPORTS_DIR", str(tmp_path / "raw" / "imports"))
+    import check_for_changes as cfc
+
+    pdfs = tmp_path / "raw" / "pdfs"
+    pdfs.mkdir(parents=True)
+    (pdfs / "a.pdf").write_bytes(b"x")
+    (pdfs / "a.md").write_text("import of a.pdf")
+    (pdfs / "b.pdf").write_bytes(b"x")
+
+    out = cfc._expand_identities([str(pdfs)])
+    assert out == [str((pdfs / "a.pdf").resolve()), str((pdfs / "b.pdf").resolve())]
+
+    # naming an import file explicitly skips it too
+    assert cfc._expand_identities([str(pdfs / "a.md")]) == []

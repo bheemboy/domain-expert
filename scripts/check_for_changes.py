@@ -53,6 +53,7 @@ from jira_utils import (
 import config
 import git_changes
 import ignore
+import ingest_state
 import jira_cursor
 import queues
 import sources
@@ -177,8 +178,12 @@ def _expand_identities(args: list[str]) -> list[str]:
     directory expands to every file beneath it (recursive), UNFILTERED; an explicitly
     named single file stays as-is. --force is "explicit intent wins": unlike detection
     and --backfill, it applies NO ignore-glob filtering — files and folders behave the
-    same. Paths are resolved to absolute."""
+    same. The one exception is extract-owned imports (the raw/imports/ tree and the
+    in-place .md next to a binary doc under raw/): an import is the materialized copy
+    of a source already covered by its own identity, so enqueueing it would
+    double-ingest the document. Paths are resolved to absolute."""
     out: list[str] = []
+    skipped_imports = 0
     for a in args:
         if sources.is_jira_key(a):
             out.append(a)
@@ -186,12 +191,22 @@ def _expand_identities(args: list[str]) -> list[str]:
         p = Path(a)
         if p.is_dir():
             for f in sorted(p.rglob("*")):
-                if f.is_file():
-                    out.append(str(f.resolve()))
+                if not f.is_file():
+                    continue
+                if ingest_state.is_import(str(f)):
+                    skipped_imports += 1
+                    continue
+                out.append(str(f.resolve()))
         elif p.exists():
+            if ingest_state.is_import(str(p)):
+                skipped_imports += 1
+                continue
             out.append(str(p.resolve()))   # named file
         else:
             out.append(a)   # not on disk — let source_of raise a clear error
+    if skipped_imports:
+        print(f"force: skipped {skipped_imports} extract-owned import file(s) — "
+              f"their source documents carry the identity")
     return out
 
 
