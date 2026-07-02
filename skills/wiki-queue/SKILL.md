@@ -27,7 +27,10 @@ that is `wiki-ingest`. Every form below maps to one script invocation. CLAUDE.md
   (folders expand recursively). **Explicit intent wins**: every file is enqueued unfiltered
   (folders included, any extension) and marked undroppable by triage — triage still reads it
   for guidance but can never skip it — unlike a source scan and backfill, which apply the `ignore:`
-  globs. (`/wiki-ingest <path|folder>` force-enqueues identically, then drains in one step.)
+  globs. Sole exception: extract-owned imports (`raw/imports/` and the in-place `.md`
+  beside a binary doc under `raw/`) are always skipped — their source documents carry
+  the identity, so enqueueing the import would double-ingest.
+  (`/wiki-ingest <path|folder>` force-enqueues identically, then drains in one step.)
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --force <args…>`.
 - `/wiki-queue --dry-run` — preview a source scan (fetch, no pull/queue/state writes); the preview applies the same `ignore:` globs and docs auto-exclusion as a real scan, so its counts match:
   `python "${CLAUDE_PLUGIN_ROOT}/scripts/check_for_changes.py" --dry-run`.

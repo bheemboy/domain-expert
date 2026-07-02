@@ -100,6 +100,18 @@ def has_import(path: str) -> bool:
         return False
 
 
+def is_import(path: str) -> bool:
+    """True if `path` IS an extract-owned import artifact — never a raw source:
+    anything under the imports tree, or the in-place .md sibling of a binary doc
+    under raw/. Enqueueing an import as a source double-ingests its document."""
+    p = Path(path).resolve()
+    if p.is_relative_to(_imports_dir().resolve()):
+        return True
+    if p.suffix.lower() == ".md" and p.is_relative_to(_raw_root()):
+        return any(p.with_suffix(ext).is_file() for ext in _DOC_EXTS)
+    return False
+
+
 def classify(path: str) -> tuple[str, str]:
     """Map a queued identity to (kind, read_target) for the synthesizer.
 

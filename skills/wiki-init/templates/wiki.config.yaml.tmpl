@@ -67,7 +67,8 @@ lint:
 # segment, `?` = one char; a pattern without a leading `**/` is anchored at the repo root.
 # Escape hatch: a genuinely valuable ignored asset (e.g. an architecture PNG) can be
 # force-enqueued past these globs — `/wiki-queue <path|folder>` (queue only) or
-# `/wiki-ingest <path|folder>` (queue, then ingest). Both bypass the filter for every file.
+# `/wiki-ingest <path|folder>` (queue, then ingest). Both bypass the filter for every
+# file except extract-owned imports, which are never enqueued as sources.
 # ignore:
 #   - ac_portal/local_modules/**     # committed compiled Angular lib (vendored)
 #   - ac_ops/terraform/**            # infra-as-code, not product-domain behavior
