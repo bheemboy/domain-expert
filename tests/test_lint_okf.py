@@ -103,6 +103,12 @@ def test_index_drift_when_page_missing_from_catalog(tmp_path):
     assert any("index-drift" in i for i in lint_wiki.lint(wiki))
 
 
+def test_wikilink_alias_with_escaped_pipe_resolves():
+    """Inside a GFM table an alias wikilink must escape the pipe ([[page\\|Alias]]);
+    the escape belongs to the table, not the link target."""
+    assert lint_wiki._wikilink_targets(r"see [[system-report\|System Report]]") == {"system-report"}
+
+
 def test_description_long_is_warning_not_issue(tmp_path):
     wiki = _wiki(tmp_path, _linked({"entities/a.md": _page(desc="x" * 400)}))
     issues = lint_wiki.lint(wiki)

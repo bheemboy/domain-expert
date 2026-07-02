@@ -305,10 +305,12 @@ def _slug(p: Path) -> str:
 
 
 def _wikilink_targets(text: str) -> set[str]:
-    """Slugs referenced by [[link]] / [[link|alias]] / [[link#heading]]."""
+    """Slugs referenced by [[link]] / [[link|alias]] / [[link#heading]].
+    Inside GFM tables the alias pipe is escaped ([[link\\|alias]]); the backslash
+    belongs to the table syntax, not the target."""
     out = set()
     for raw in _WIKILINK_RE.findall(text):
-        target = raw.split("|")[0].split("#")[0].strip()
+        target = raw.split("|")[0].split("#")[0].strip().rstrip("\\")
         if target:
             out.add(Path(target).stem)
     return out
