@@ -1,4 +1,6 @@
 ---
+title: {{PRODUCT_NAME}} — Overview
+description: Top-level synthesis of what {{PRODUCT_NAME}} is and does; start here.
 type: concept
 status: current
 sources: []

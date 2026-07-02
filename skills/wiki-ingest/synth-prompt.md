@@ -27,6 +27,10 @@ confidence tag to use. Work from the wiki schema. Do not touch any manifest.
    `business_relevant: false` (record nothing, report it complete). For `prose`/`code`,
    judge business-relevance from the content (§2) and record nothing if there is none.
    For the rest, **create or update** the relevant `wiki/` page(s):
+   - **Frontmatter (§4)** on every page you touch: `title:` mirrors the H1 exactly;
+     `description:` is the page's single-line summary — the index catalog renders it
+     verbatim, so refresh it whenever the page's meaning shifts. Never edit the
+     catalog region of `wiki/index.md` by hand.
    - Apply provenance + recency (§4): carry each claim's citation + confidence tag
      (above). Override precedence is by tag — `(code-confirmed)` > `(doc-stated)` >
      `(ticket-only)` — plus §4.4 (code wins over any ticket regardless of date). When a
@@ -43,7 +47,8 @@ confidence tag to use. Work from the wiki schema. Do not touch any manifest.
      term, scope the line to its era (e.g. prefix `(v1.0)` or keep its
      `[KEY, YYYY-MM]` cite), or move it to `## Superseded` with the
      `[OLD → replaced by NEW]` annotation. **Always include the [[glossary]] row,
-     the [[index]] one-line summary, and any name-history list.** The sweep is done
+     each affected page's `description:` frontmatter (the index catalog renders
+     it), the index's hand-written prose notes, and any name-history list.** The sweep is done
      only when grep shows no *unscoped current* use of the old term. (qmd hits are
      leads; grep over `wiki/` is the authoritative worklist here.)
    - A single import may touch several pages (often 3–10). Add `[[wikilinks]]`.
@@ -52,8 +57,12 @@ confidence tag to use. Work from the wiki schema. Do not touch any manifest.
      never link the raw `jira-exports/...` file or the live ticket (the import records the
      ticket URL in `source_url:`). A `prose`/`code` source has **no import** — its inline
      `[doc: …]` / `[code: …]` citation is the provenance; do not fabricate an import link.
-3. Update `wiki/index.md` (new pages / changed summaries) and append ONE `synth`
-   line per source to `wiki/log.md` in the standard format (§6).
+3. Regenerate the index catalog: `python "${CLAUDE_PLUGIN_ROOT}/scripts/build_index.py" --write`
+   (it renders each page's `description:` into `wiki/index.md`; update the index's
+   hand-written prose only if a note there went stale). Then record ONE `synth`
+   bullet per source in `wiki/log.md` in the standard format (§6): prepend
+   `- synth | …` directly under today's `## YYYY-MM-DD` heading, creating that
+   heading above the first date heading if today's is missing (newest first).
 4. Return EXACTLY ONE line:
    - `SYNTHED | completed: <id> <id> … | pages: <slugs>` — list every source you fully
      finished, by the id it has in the manifest (a Jira KEY, or a file path for doc/raw

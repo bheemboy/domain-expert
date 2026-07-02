@@ -39,6 +39,47 @@ def test_changed_synth_prefixed_line_does_not_reset_watermark():
     assert lint_scope.changed_since_last_lint(log) == ["gamma", "delta"]
 
 
+def test_changed_okf_log_pages_above_first_lint_bullet():
+    """OKF log (newest-first): the newest lint is the FIRST `- lint` bullet;
+    only events above it are 'since the last lint'."""
+    log = "\n".join([
+        "# P Wiki — Log",
+        "",
+        "## 2026-06-05",
+        "- synth | A-9 | pages: omega",
+        "- lint --full | manual | scope: 59 pages | clean",
+        "## 2026-06-03",
+        '- query | "q?" | pages read: alpha, beta',
+        "- synth | A-2 | pages: gamma, beta",
+        "## 2026-06-01",
+        "- synth | A-1 | pages: alpha",
+    ])
+    assert lint_scope.changed_since_last_lint(log) == ["omega"]
+
+
+def test_changed_okf_log_whole_log_when_no_lint_yet():
+    log = "\n".join([
+        "## 2026-06-02",
+        "- synth | A-2 | pages: gamma, beta",
+        "## 2026-06-01",
+        "- synth | A-1 | pages: alpha, beta",
+    ])
+    assert lint_scope.changed_since_last_lint(log) == ["gamma", "beta", "alpha"]
+
+
+def test_changed_okf_log_synth_prefixed_bullet_does_not_set_watermark():
+    log = "\n".join([
+        "## 2026-06-04",
+        "- synth | A-3 | pages: delta",
+        "- synth-lint | auto | pages: gamma",
+        "- synth | A-2 | pages: gamma",
+        "## 2026-06-02",
+        "- lint | manual | clean",
+        "- synth | A-1 | pages: alpha",
+    ])
+    assert lint_scope.changed_since_last_lint(log) == ["delta", "gamma"]
+
+
 def _wiki(tmp_path, files):
     wiki = tmp_path / "wiki"
     for rel, text in files.items():

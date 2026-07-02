@@ -10,10 +10,15 @@ semantic), or none (delta — changed since last lint + neighbors). Mechanical a
 
 ## 1. Mechanical (always; deterministic)
 Run `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"`. Deterministic checks: broken `[[wikilinks]]`,
-orphan pages, duplicate slugs, `index.md` drift, frontmatter gaps. Exit 0 = clean,
-non-zero = issues (printed). This is cheap — safe to run often and forward. It also
-emits advisory `WARN` lines (`context-ref-leak`, `supersession-leak`) that never
-affect the exit code — these are candidate lists for semantic passes 5 and 3 below.
+orphan pages, duplicate slugs, `index.md` catalog drift (exact, against
+`build_index.py`) and `okf_version`, frontmatter gaps (`title`, `description`,
+`type`, `status`, `updated`), title↔H1 mismatch, malformed descriptions. Exit 0 =
+clean, non-zero = issues (printed). This is cheap — safe to run often and forward.
+It also emits advisory `WARN` lines (`context-ref-leak`, `supersession-leak`,
+`description-long`) that never affect the exit code — the first two are candidate
+lists for semantic passes 5 and 3 below. Fix `index-drift` by running
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/build_index.py" --write`, never by editing
+the catalog region.
 
 If the arg is `mechanical`, stop here and report the output. The mechanical tier is pure
 Python: it touches no model and no qmd index.
@@ -36,7 +41,8 @@ no synth/extract subagent is writing to `wiki/`.
    and stop — do not spawn a subagent.
 2. Spawn one Opus subagent (`subagent_type: general-purpose`, `model: opus`) with
    `${CLAUDE_PLUGIN_ROOT}/prompts/lint-prompt.md`, filling the `## Scope` **delta** option
-   with that page list and the mechanical output. It appends a `lint | manual` line.
+   with that page list and the mechanical output. It records a `- lint | manual`
+   bullet in `log.md` (prepended under today's date heading, newest first).
 
 **Full (`/wiki-lint --full`).** Exhaustive whole-wiki audit:
 1. `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_scope.py" full` → one shard (comma-separated
@@ -49,6 +55,7 @@ no synth/extract subagent is writing to `wiki/`.
    unreachable. Pass 8 runs in `--full` only; the delta tier never code-grounds.
 3. Spawn one final Opus synthesis subagent with all shard findings + `index.md`,
    `overview.md`, `glossary.md`: reconcile cross-shard contradictions, check the summary
-   pages against the whole set, apply safe fixes, and append one `lint --full | manual` line.
+   pages against the whole set, apply safe fixes, and record one
+   `- lint --full | manual` bullet (same prepend rule).
 
 Report the subagent return verbatim. On `BLOCKED`, surface and do not guess.

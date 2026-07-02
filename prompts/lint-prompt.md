@@ -24,12 +24,14 @@ Audit exactly the page set named here — exhaustively, not by sampling:
   1-hop neighbors: `<page list>`. Evaluate the global passes (summary-page
   consistency, concept-split) *as they bear on these pages* — i.e. check whether
   these changes affect `index.md` / `overview.md` / `glossary.md`, not a full
-  summary-vs-everything reconciliation. Append a `lint | <auto|manual>` line to
-  `wiki/log.md`.
+  summary-vs-everything reconciliation. Record a `- lint | <auto|manual>` bullet
+  in `wiki/log.md` (prepend under today's `## YYYY-MM-DD` heading, newest first;
+  create the heading if today's is missing).
 - **full, shard `<i>` of `<n>`** — Audit ONLY these pages: `<shard list>`. Return
   your findings to the synthesis step (do not write `log.md`); a final synthesis
   agent reconciles cross-shard contradictions, checks the summary pages against
-  the whole set, and appends one `lint --full | manual` line to `wiki/log.md`.
+  the whole set, and records one `- lint --full | manual` bullet in `wiki/log.md`
+  (same prepend rule).
   Run Pass 8 (code-grounding) over these pages — it runs in this scope only.
 
 First read `wiki/index.md`, `wiki/overview.md`, `wiki/terminology/glossary.md`,
@@ -53,7 +55,12 @@ Mandatory semantic passes:
 2. **Summary-page consistency.** Check `overview.md`, `index.md`, and `glossary.md`
    against newer, more specific linked pages. If a summary makes an old broad
    claim and a newer linked page expands/narrows/replaces that scope, update the
-   summary or return `BLOCKED`.
+   summary or return `BLOCKED`. The index catalog (between the `<!-- catalog:begin/end -->`
+   markers) is generated: fix a stale catalog entry by editing that page's
+   `description:` frontmatter and running
+   `python "${CLAUDE_PLUGIN_ROOT}/scripts/build_index.py" --write` — never edit
+   between the markers. The index's hand-written prose (above the markers) you
+   maintain directly.
 
 3. **Rename/replacement cascade.** When a source renames or replaces a product
    noun, role, privilege, project, report, page, endpoint, storage path, test,
@@ -142,11 +149,12 @@ Mandatory semantic passes:
    `qmd-unavailable`).
 
 - **Auto-fix** only safe, unambiguous issues (missing cross-link, broken link
-  target, obvious duplicate merge, index/glossary summary drift, clearly stale
-  unscoped old claim where the replacement is explicit).
+  target, obvious duplicate merge, glossary summary drift, a stale page
+  `description:` — regenerate the catalog via `build_index.py --write`, clearly
+  stale unscoped old claim where the replacement is explicit).
 - Do not auto-fix issues that need product judgment, such as whether a newer claim
   replaces an older claim or merely adds another configuration.
-- Append one `lint` line to `wiki/log.md`.
+- Record one `- lint` bullet in `wiki/log.md` (prepend rule above).
 - Return:
   - `CLEAN | checked: <pages/passes>; residual-risk: <short note>`
   - `FIXED | <short list>; checked: <pages/passes>; residual-risk: <short note>`

@@ -7,8 +7,13 @@ structural problems that are *computable* — no model judgment required:
   * broken [[wikilinks]]   — a link whose target page does not exist
   * orphan pages           — a content page with no inbound [[wikilink]]
   * duplicate slugs        — the same page slug under two folders
-  * index drift            — content pages missing from index.md (or vice versa)
+  * index drift            — the index.md catalog region differs from what
+                             build_index.render_catalog produces from page
+                             `description:` frontmatter (exact comparison)
+  * okf-version-missing    — index.md lacks the `okf_version` frontmatter block
   * frontmatter gaps       — pages missing required frontmatter keys
+  * title-h1-mismatch      — `title:` frontmatter differs from the page H1
+  * description problems   — empty or multi-line `description:` value
   * missing source link    — a References link to raw/imports/jira/<KEY>.md that doesn't exist
   * stale digest link      — a References link still pointing at digests/ (retired path)
   * stale export link      — a wiki link to a raw jira-exports/ file (old convention;
@@ -36,8 +41,12 @@ It also runs advisory (warning-only) checks that do NOT affect the exit code:
 Semantic checks (contradictions, missed supersessions, concept-splits) are NOT
 done here — those need the Opus semantic-lint subagent.
 
+It also warns (advisory) on over-long `description:` values (description-long),
+since the catalog renders them verbatim and they should stay one-liners.
+
 Exit code is non-zero if any hard *issue* is found (warnings excluded), so the
-synth gate / CI can branch on it. Pure stdlib; run from the repo root:
+synth gate / CI can branch on it. No model calls; deterministic (pyyaml for
+frontmatter values, via config/build_index). Run from the repo root:
 ``python scripts/lint_wiki.py`` (add ``--no-rename-check`` / ``--no-context-check``
 to skip an advisory check).
 """
@@ -48,6 +57,9 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
+import build_index
 import config
 
 _KEY_PREFIX = config.project_key() + "-"
@@ -55,7 +67,11 @@ _KEY_PREFIX = config.project_key() + "-"
 WIKI = Path("wiki")
 # Catalog/entry pages: never treated as orphans, never required to be self-listed.
 ENTRY_PAGES = {"index", "log", "overview"}
-REQUIRED_FRONTMATTER = ("type", "status", "updated")
+# OKF reserved files — the only pages exempt from frontmatter requirements;
+# overview.md is a content page and carries full frontmatter like any other.
+FRONTMATTER_EXEMPT = {"index", "log"}
+REQUIRED_FRONTMATTER = ("title", "description", "type", "status", "updated")
+DESCRIPTION_WARN_CHARS = 300
 
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
@@ -237,6 +253,49 @@ def _context_dependent_refs(pages, page_text) -> list[str]:
     return warns
 
 
+_H1_RE = re.compile(r"^# (.+)$", re.MULTILINE)
+
+
+def _fm_values(fm: str) -> dict:
+    """Frontmatter as a dict; {} when it doesn't parse as YAML."""
+    try:
+        vals = yaml.safe_load(fm)
+        return vals if isinstance(vals, dict) else {}
+    except yaml.YAMLError:
+        return {}
+
+
+def _frontmatter_value_issues(p: Path, fm: str, text: str) -> list[str]:
+    """Value-level checks on parsed frontmatter: title↔H1, description shape."""
+    issues: list[str] = []
+    vals = _fm_values(fm)
+    title = vals.get("title")
+    h1 = _H1_RE.search(text)
+    if isinstance(title, str) and h1 and title.strip() != h1.group(1).strip():
+        issues.append(f'title-h1-mismatch: {p} (title "{title.strip()}" vs H1 "{h1.group(1).strip()}")')
+    if "description" in vals:
+        desc = vals["description"]
+        if not isinstance(desc, str) or not desc.strip():
+            issues.append(f"description-empty: {p}")
+        elif "\n" in desc:
+            issues.append(f"description-multiline: {p} (must be a single line)")
+    return issues
+
+
+def _description_length_warns(pages, page_text) -> list[str]:
+    """WARN-level: descriptions render verbatim into the index catalog, so they
+    should stay one-liners; long ones are a cleanup signal, not a gate."""
+    warns: list[str] = []
+    for p in pages:
+        if _slug(p) in FRONTMATTER_EXEMPT:
+            continue
+        desc = build_index.page_description(page_text[p])
+        if desc and len(desc) > DESCRIPTION_WARN_CHARS:
+            warns.append(f"description-long: {p} ({len(desc)} chars > "
+                         f"{DESCRIPTION_WARN_CHARS}) — tighten to a one-liner")
+    return warns
+
+
 def _content_pages() -> list[Path]:
     return sorted(p for p in WIKI.rglob("*.md"))
 
@@ -246,10 +305,12 @@ def _slug(p: Path) -> str:
 
 
 def _wikilink_targets(text: str) -> set[str]:
-    """Slugs referenced by [[link]] / [[link|alias]] / [[link#heading]]."""
+    """Slugs referenced by [[link]] / [[link|alias]] / [[link#heading]].
+    Inside GFM tables the alias pipe is escaped ([[link\\|alias]]); the backslash
+    belongs to the table syntax, not the target."""
     out = set()
     for raw in _WIKILINK_RE.findall(text):
-        target = raw.split("|")[0].split("#")[0].strip()
+        target = raw.split("|")[0].split("#")[0].strip().rstrip("\\")
         if target:
             out.add(Path(target).stem)
     return out
@@ -298,7 +359,7 @@ def lint(wiki_dir: Path) -> list[str]:
             elif "digests/" in target and target.endswith(".md"):
                 issues.append(f"stale-digest-link: {p} -> {target} (digests/ retired; link raw/imports/jira/)")
 
-        if slug not in ENTRY_PAGES:
+        if slug not in FRONTMATTER_EXEMPT:
             m = _FRONTMATTER_RE.match(text)
             if not m:
                 issues.append(f"frontmatter-missing: {p}")
@@ -307,6 +368,7 @@ def lint(wiki_dir: Path) -> list[str]:
                 for key in REQUIRED_FRONTMATTER:
                     if not re.search(rf"^{key}\s*:", fm, re.MULTILINE):
                         issues.append(f"frontmatter-key-missing: {p} ({key})")
+                issues.extend(_frontmatter_value_issues(p, fm, text))
 
     # Duplicate slugs.
     for slug, paths in sorted(slug_paths.items()):
@@ -321,18 +383,19 @@ def lint(wiki_dir: Path) -> list[str]:
         if inbound.get(slug, 0) == 0:
             issues.append(f"orphan: {paths[0]} (no inbound [[links]])")
 
-    # index.md drift.
+    # index.md: okf_version declaration + exact catalog drift (builder-based).
     index = wiki_dir / "index.md"
     if not index.is_file():
         issues.append("index-missing: wiki/index.md not found")
     else:
         index_text = page_text.get(index, index.read_text(encoding="utf-8"))
-        for slug, paths in sorted(slug_paths.items()):
-            if slug in ENTRY_PAGES:
-                continue
-            # Listed if referenced by slug anywhere in index.md (link or wikilink).
-            if not re.search(rf"\b{re.escape(slug)}\b", index_text):
-                issues.append(f"index-drift: {paths[0]} not referenced in index.md")
+        m = _FRONTMATTER_RE.match(index_text)
+        if not m or not re.search(r"^okf_version\s*:", m.group(1), re.MULTILINE):
+            issues.append('okf-version-missing: index.md needs an `okf_version: "0.1"` frontmatter block')
+        rendered = build_index.apply(index_text, build_index.render_catalog(wiki_dir))
+        if rendered != index_text:
+            issues.append("index-drift: index.md catalog out of date with page "
+                          "`description:` frontmatter — run scripts/build_index.py --write")
 
     return issues
 
@@ -352,6 +415,7 @@ def main() -> int:
         warns += _supersession_leaks(pages, page_text)
     if "--no-context-check" not in sys.argv:
         warns += _context_dependent_refs(pages, page_text)
+    warns += _description_length_warns(pages, page_text)
 
     # Report.
     if not issues:

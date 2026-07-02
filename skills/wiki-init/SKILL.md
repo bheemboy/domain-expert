@@ -68,8 +68,23 @@ no config → **bootstrap**; config present → **upgrade**.
    - Present and identical → nothing to do.
    - Present but differs → show a diff and ask for confirmation before overwriting
      (a user *may* have hand-edited it); on confirm, copy and keep it executable.
-5. **Never** touch `wiki/`, `raw/`, or `wiki.config.yaml`. Only `CLAUDE.md` and
-   `qmd_sync.sh` change.
+5. **OKF migration (pre-OKF wikis only).** Detect a pre-OKF wiki: content pages
+   missing `title:`/`description:` frontmatter, or `## [` event headings in
+   `wiki/log.md`, or no `okf_version` in `wiki/index.md`. If detected:
+   a. `python "${CLAUDE_PLUGIN_ROOT}/scripts/migrate_okf.py"` (dry-run) — show the
+      human the report (pages touched, needs-description list, unparsed log lines).
+   b. On **explicit confirmation only**, run with `--write`.
+   c. For each page on the `needs-description` report, read the page and write a
+      one-line `description:` yourself (it becomes the index catalog entry); show
+      the human the list of descriptions you wrote.
+   d. Verify: `python "${CLAUDE_PLUGIN_ROOT}/scripts/lint_wiki.py"` and
+      `python "${CLAUDE_PLUGIN_ROOT}/scripts/build_index.py" --check` both clean
+      (advisory `description-long` WARNs are expected on wikis with paragraph-length
+      index summaries — surface them, don't fix them mechanically).
+   Skip this step entirely when no pre-OKF marker is found.
+6. **Never** touch `raw/` or `wiki.config.yaml`. `CLAUDE.md` and `qmd_sync.sh` are
+   the normal upgrade surface; `wiki/` is modified **only** by the explicit,
+   human-confirmed OKF migration in step 5.
 
 ## Guardrails
 - Never overwrite an existing `wiki.config.yaml` or non-empty `wiki/` during bootstrap;
