@@ -38,9 +38,14 @@ Dispatch each `<source>\t<identity>` line on
 - **`ready`** → `python "${CLAUDE_PLUGIN_ROOT}/scripts/queues.py" extracted <source> <identity>`. Covers
   a Jira clean import already present from an interrupted run.
 - **`extract-doc`** → batch all doc paths; run `python "${CLAUDE_PLUGIN_ROOT}/scripts/extract_docs.py"
-  <paths...>` once. Do NOT call `extracted` here — leave each doc in `.extract`. Once its
-  import exists, `extract-action` returns `triage`, so the same loop re-picks it on its
-  next pass and triages the converted markdown like any other kept source.
+  <paths...>` once. **Run it as a background task** (Bash `run_in_background`), never
+  foreground: docling conversion is CPU-bound (~11 s/page; a large PDF batch runs for
+  hours) and a foreground call dies at the Bash timeout cap. The script is resumable —
+  each import is written as it completes and already-imported files are skipped — so an
+  interrupted run just re-launches. Wait for the completion notification before
+  continuing the loop. Do NOT call `extracted` here — leave each doc in `.extract`.
+  Once its import exists, `extract-action` returns `triage`, so the same loop re-picks
+  it on its next pass and triages the converted markdown like any other kept source.
 - **`triage`** → spawn one Haiku subagent per identity (Agent tool,
   `subagent_type: general-purpose`, `model: haiku`) with `triage-prompt.md`
   (substitute `<identity>`). ≤FANOUT in parallel in one message; wait for all. The
