@@ -80,8 +80,13 @@ def _folder(p: Path, wiki_dir: Path) -> str:
     return rel.parts[0] if len(rel.parts) > 1 else "(root)"
 
 
-def render_catalog(wiki_dir: Path) -> str:
-    """The full marker-delimited catalog block for wiki_dir's content pages."""
+def render_catalog(wiki_dir: Path, texts: dict[Path, str] | None = None) -> str:
+    """The full marker-delimited catalog block for wiki_dir's content pages.
+
+    `texts` optionally overrides on-disk content per path (used by migrate_okf
+    to render the catalog from not-yet-written page updates in dry-run mode).
+    """
+    texts = texts or {}
     by_folder: dict[str, list[Path]] = {}
     for p in sorted(wiki_dir.rglob("*.md")):
         if p.stem in RESERVED:
@@ -98,7 +103,8 @@ def render_catalog(wiki_dir: Path) -> str:
         for p in sorted(by_folder[folder], key=lambda p: p.stem):
             rel = p.relative_to(wiki_dir).with_suffix("")
             link = p.stem if folder == "(root)" else rel.as_posix()
-            desc = page_description(p.read_text(encoding="utf-8")) or NO_DESCRIPTION
+            text = texts.get(p) if p in texts else p.read_text(encoding="utf-8")
+            desc = page_description(text) or NO_DESCRIPTION
             lines.append(f"- [[{link}]] — {desc}")
         sections.append("\n".join(lines))
     return MARKER_BEGIN + "\n" + "\n\n".join(sections) + "\n" + MARKER_END
