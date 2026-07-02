@@ -6,10 +6,16 @@ returns text, or None when the file isn't a convertible binary doc or the needed
 tool is missing / fails (the caller then records a media gap).
 
 Dispatch:
-  .pdf                         -> pdftotext -layout
+  .pdf                         -> docling (markdown; optional) else pdftotext -layout
   .docx, .odt                  -> pandoc -t markdown
   .pptx, .ppt, .xlsx, .xls,    -> libreoffice --headless --convert-to pdf
   .doc                            then pdftotext
+
+docling is preferred for PDFs because it reconstructs reading order on
+multi-column pages and emits real markdown tables; pdftotext -layout interleaves
+columns line-by-line. docling is a required dependency (requirements.txt); the
+pdftotext fallback exists for per-file docling failures (corrupt/encrypted PDF),
+and degrades the whole PDF path only where docling was never installed.
 """
 
 import shutil
@@ -36,6 +42,28 @@ def _pdftotext(pdf: Path) -> str | None:
         return None
     r = _run(["pdftotext", "-layout", str(pdf), "-"])
     return r.stdout if r.returncode == 0 else None
+
+
+_docling_converter = None  # lazy singleton: model load is expensive, reuse across calls
+
+
+def _docling(pdf: Path) -> str | None:
+    global _docling_converter
+    try:
+        if _docling_converter is None:
+            from docling.document_converter import DocumentConverter
+            _docling_converter = DocumentConverter()
+        md = _docling_converter.convert(str(pdf)).document.export_to_markdown()
+        return md if md and md.strip() else None
+    except Exception:
+        return None
+
+
+def _pdf_text(pdf: Path) -> str | None:
+    text = _docling(pdf)
+    if text and text.strip():
+        return text
+    return _pdftotext(pdf)
 
 
 def _pandoc(doc: Path) -> str | None:
@@ -66,7 +94,7 @@ def convert(path) -> str | None:
     p = Path(path)
     ext = p.suffix.lower()
     if ext in PDF_EXTS:
-        text = _pdftotext(p)
+        text = _pdf_text(p)
     elif ext in PANDOC_EXTS:
         text = _pandoc(p)
     elif ext in SOFFICE_EXTS:

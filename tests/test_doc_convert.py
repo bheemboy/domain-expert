@@ -49,6 +49,46 @@ def test_convert_unsupported_returns_none(tmp_path):
     assert doc_convert.convert(f) is None
 
 
+def test_convert_pdf_prefers_docling(monkeypatch, tmp_path):
+    # When the docling backend yields text, it wins over pdftotext.
+    f = tmp_path / "twocol.pdf"
+    f.write_bytes(b"%PDF-1.4 dummy")
+    monkeypatch.setattr(doc_convert, "_docling", lambda p: "# Proper markdown\n")
+    monkeypatch.setattr(doc_convert, "_pdftotext", lambda p: "scrambled columns\n")
+    assert doc_convert.convert(f) == "# Proper markdown\n"
+
+
+def test_convert_pdf_falls_back_to_pdftotext(monkeypatch, tmp_path):
+    # docling unavailable/failed (None) -> pdftotext result is used.
+    f = tmp_path / "plain.pdf"
+    f.write_bytes(b"%PDF-1.4 dummy")
+    monkeypatch.setattr(doc_convert, "_docling", lambda p: None)
+    monkeypatch.setattr(doc_convert, "_pdftotext", lambda p: "layout text\n")
+    assert doc_convert.convert(f) == "layout text\n"
+
+
+def test_docling_whitespace_output_falls_back(monkeypatch, tmp_path):
+    # Whitespace-only docling output counts as failure, not a result.
+    f = tmp_path / "empty.pdf"
+    f.write_bytes(b"%PDF-1.4 dummy")
+    monkeypatch.setattr(doc_convert, "_docling", lambda p: "\n   \n")
+    monkeypatch.setattr(doc_convert, "_pdftotext", lambda p: "layout text\n")
+    assert doc_convert.convert(f) == "layout text\n"
+
+
+def test_docling_returns_none_without_package(tmp_path):
+    # In an env without the docling package, _docling degrades to None
+    # (never raises) so the pdftotext fallback path stays reachable.
+    try:
+        import docling  # noqa: F401
+        pytest.skip("docling installed; missing-package path not testable")
+    except ImportError:
+        pass
+    f = tmp_path / "any.pdf"
+    f.write_bytes(b"%PDF-1.4 dummy")
+    assert doc_convert._docling(f) is None
+
+
 def test_convert_whitespace_only_is_none(monkeypatch, tmp_path):
     # A valid PDF that yields only whitespace/form-feed (e.g. a scanned image)
     # must be treated as "no text" -> None, so the caller records a media gap.

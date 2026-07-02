@@ -43,7 +43,8 @@ no config → **bootstrap**; config present → **upgrade**.
    Substitute `{{TODAY}}` with the current ISO date.
 3. **Print remaining machine-local prereqs** (do not perform): create
    `<config_dir>/jira.token` (JIRA_EMAIL/JIRA_TOKEN), `pip install -r` the plugin's
-   `requirements.txt`, install doc converters (`poppler-utils pandoc libreoffice`),
+   `requirements.txt` (includes docling for layout-aware PDF conversion — heavy,
+   ~2 GB with models), install doc converters (`poppler-utils pandoc libreoffice`),
    optional search index — the human runs `./qmd_sync.sh` from the repo root in their
    own terminal (it bootstraps `qmd init` + the `raw`/`wiki` collections, then embeds;
    the first build can run for hours, so do NOT run it for them). Long build:
