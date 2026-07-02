@@ -113,8 +113,9 @@ with `pages: (none)` and move on.
 
 ```
 wiki/
-  index.md            Catalog of every page (content-oriented). Update every ingest.
-  log.md              Append-only timeline of ingests/queries/lints (chronological).
+  index.md            Page catalog. `okf_version` frontmatter + hand-written prose;
+                      the per-category listing is GENERATED (scripts/build_index.py).
+  log.md              Timeline of ingests/queries/lints — newest first, OKF date groups.
   overview.md         Top-level synthesis: what the product is.
   entities/           The nouns.        e.g. <entity>.md
   concepts/           The ideas.        e.g. authentication.md
@@ -143,6 +144,8 @@ sections. Scale sections to the content — omit empty ones.
 
 ```markdown
 ---
+title: Example Page     # mirrors the H1 exactly
+description: One-line definition of what this is, in business terms.
 type: entity            # entity | concept | process | rule | terminology
 status: current         # current | superseded
 sources: [PROJ-37]      # Jira keys / doc keys that informed this page
@@ -167,6 +170,14 @@ One-line definition of what this is, in business terms.
 ## References
 - [PROJ-37 — Page title](../../raw/imports/jira/PROJ-37.md)
 ```
+
+The wiki is an [OKF v0.1](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+bundle: `title`/`description`/`type` are OKF core fields (every non-reserved page MUST
+have a `type`); `status`/`sources`/`code_refs`/`updated` are extension fields OKF consumers
+preserve. `description:` is a **single line**, mirrors the one-line definition under the
+H1, and is rendered *verbatim* into the `index.md` catalog by `scripts/build_index.py` —
+to change a catalog entry, change the page's `description:`, never the catalog. `title:`
+must equal the H1 text exactly (lint checks both).
 
 Each References entry **for a Jira/doc source** carries **exactly one link**: the **import** (`../../raw/imports/jira/<KEY>.md`). The import records its own source via `source_url:` (the live Jira ticket), so ground truth is one hop away. (From `wiki/overview.md`: `../raw/imports/jira/<KEY>.md`.) A **raw code/prose source has no import** — its inline `[code: …]` / `[doc: …]` citation is the provenance; do not fabricate an import link.
 
@@ -225,9 +236,10 @@ only the *policy* they implement.
 - **Synthesize** is the single serialized writer to the wiki. It processes the `.synth`
   queues in priority order — Jira oldest→newest (guaranteed by extract-pass ordering, §7);
   imports for Jira/docs (under `raw/imports/`), raw files read directly for code/prose (the
-  `ingest` skill's `classify` step) — applies recency/override (§4), updates `index.md`,
-  appends to `log.md` (§6), skips `business_relevant: false` imports, and runs a lint gate
-  every 20.
+  `ingest` skill's `classify` step) — applies recency/override (§4), sets/refreshes
+  `title:` + `description:` frontmatter on every touched page, regenerates the `index.md`
+  catalog (`scripts/build_index.py --write`), prepends to `log.md` (§6), skips
+  `business_relevant: false` imports, and runs a lint gate every 20.
 
 - **Query — `ask <question>`** (default mode): read `index.md`, follow `[[links]]`,
   answer with inline `[KEY]` citations; offer to file a reusable answer back as a page.
@@ -236,8 +248,9 @@ only the *policy* they implement.
   (an Opus engine over the canonical `prompts/lint-prompt.md`) in two scopes, each audited
   **exhaustively** over a deterministically-resolved page set (`scripts/lint_scope.py`):
   - **delta** (default; also the synth gate): pages changed since the last lint + their
-    1-hop `[[neighbors]]`. The watermark is the last `lint` line in `log.md` (append
-    position, not date). Logs `lint | auto` (gate) or `lint | manual`.
+    1-hop `[[neighbors]]`. The watermark is the newest `lint` bullet in `log.md` — the
+    first from the top, since the log is newest-first. Logs `lint | auto` (gate) or
+    `lint | manual`.
   - **full** (`/lint --full`): the whole wiki, sharded so every page is read, with a
     cross-shard synthesis pass. Rare/on-demand. Logs `lint --full | manual`.
   Surface, do not auto-fix, issues needing human judgment.
@@ -252,24 +265,34 @@ only the *policy* they implement.
 
 ## 6. index.md and log.md
 
-**`index.md`** — content catalog. Each page listed under its category with a
-link and a one-line summary. Read it first on every query. Keep it in sync on
-every **synthesize**.
+**`index.md`** — content catalog. Read it first on every query. It has three parts:
+an `okf_version: "0.1"` frontmatter block (the only frontmatter OKF permits in an
+index), hand-written prose (intro, source/naming notes — yours to maintain), and the
+per-category page listing inside `<!-- catalog:begin -->` … `<!-- catalog:end -->`
+markers. The marker region is **generated** from page `description:` frontmatter by
+`scripts/build_index.py --write` — never hand-edit it; edit the page's `description:`
+and regenerate. Lint fails on any drift between the two.
 
-**`log.md`** — append-only, chronological, greppable. One line per event with a
-consistent prefix so `grep "^## \[" wiki/log.md | tail -5` works. `synth` is the
-event that records wiki changes (with the underlying sources); extract is tracked by
-the queues/imports, not the log:
+**`log.md`** — greppable event timeline in OKF form: `## YYYY-MM-DD` date headings,
+one `- <op> | <payload>` bullet per event, **newest first** throughout. To record an
+event, *prepend* the bullet directly under today's heading (create `## <today>` above
+the first date heading if it doesn't exist yet). Recent events: `head -30 wiki/log.md`.
+`synth` is the event that records wiki changes (with the underlying sources); extract
+is tracked by the queues/imports, not the log:
 
 ```
-## [2026-06-09] synth  | PROJ-37 (story, 2017-11) | pages: login, authentication, glossary
-## [2026-06-09] query  | "how does the product authenticate?" | pages read: authentication, login
-## [2026-06-09] lint | auto   | scope: 14 pages since last lint + neighbors | FIXED 1 broken link
-## [2026-06-09] lint --full | manual | scope: 59 pages, 5 shards | CLEAN
+## 2026-06-10
+- lint --full | manual | scope: 59 pages, 5 shards | CLEAN
+
+## 2026-06-09
+- lint | auto   | scope: 14 pages since last lint + neighbors | FIXED 1 broken link
+- query  | "how does the product authenticate?" | pages read: authentication, login
+- synth  | PROJ-37 (story, 2017-11) | pages: login, authentication, glossary
 ```
 
 `lint | auto` is a synth-gate delta; `lint | manual` a hand-run delta; `lint --full` a full
-audit. All three are the lint watermark (the `auto|manual` field is traceability only).
+audit. All three are the lint watermark — the topmost `- lint` bullet, since newest is
+first (the `auto|manual` field is traceability only).
 
 **State is which queue a line is in.** An identity (Jira KEY or absolute path) lives in
 exactly one of `<config_dir>/state/<source>.{extract,synth}`, or neither (done) — its location is
@@ -323,6 +346,10 @@ ongoing forward trickle.
 - `scripts/extract_docs.py` — mechanical binary-doc → `raw/imports/<hash8>/<name>.md` (explicit paths).
 - `scripts/git_changes.py` — git fetch/pull/diff helpers (stateless source scan).
 - `scripts/lint_wiki.py` — mechanical (non-LLM) wiki lint (§5 Lint).
+- `scripts/build_index.py` — regenerates the `index.md` catalog region from page
+  `description:` frontmatter (`--check` for drift, `--write` to fix; §6).
+- `scripts/migrate_okf.py` — one-shot mechanical migration of a pre-OKF wiki
+  (title/description backfill, log/index rewrite); surfaced by `/wiki-init` upgrade.
 - `qmd` — hybrid search over `raw/` + `wiki/` (project-local `.qmd/` index,
   gitignored; collections `raw`, `wiki`); refreshed via `qmd update && qmd embed`
   by synth (start+end) and lint (start).
