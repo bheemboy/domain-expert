@@ -80,13 +80,13 @@ Commands are grouped by skill.
 
 | Command | What it does, and when to use it |
 |---|---|
-| `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki, and again after a plugin update to refresh the schema. An upgrade rewrites only the generic schema body; your hand-written product-identity section (`CLAUDE.md` §0: names, Jira key, source repos) stays untouched. |
+| `/wiki-init` | Scaffolds a new wiki repo (interview, then `wiki/`, `wiki.config.yaml`, and `CLAUDE.md`), or upgrades an existing repo's generic schema. Run it once when starting a wiki, and again after a plugin update to refresh the schema. An upgrade rewrites only the generic schema body; your hand-written product-identity section (`CLAUDE.md` §0: names, Jira key, source repos) stays untouched. On a pre-OKF wiki, the upgrade also offers the one-shot [OKF migration](#okf-conformance) (shown as a dry-run report first; applied only on your confirmation). |
 | `/wiki-ingest` | Scans your sources for new Jira and repo changes when the queue is empty, then ingests everything pending (extract, then synthesize). The default day-to-day command: run it to bring the wiki up to date. |
 | `/wiki-ingest N` | The same as `/wiki-ingest`, but caps each phase at N items. Use it to work through a large backlog in controlled chunks, such as `/wiki-ingest 30` run a few times. |
 | `/wiki-ingest <path\|folder>` | Enqueues a path or folder, then ingests it in one step (no scan). Takes every file, unfiltered; see [Force-enqueue](#force-enqueue) below. The path must be under `raw/` or a configured source repo, given relative to the repo root (for example, `raw/specs/api.pdf`) or as an absolute path. |
 | `/wiki-lint` | Delta health check: deterministic checks plus a semantic review of the pages **changed since the last lint** and their direct neighbors. Fast; run it any time. After an ingest run it usually reports nothing new — the signal the wiki is current. |
 | `/wiki-lint --full` | Exhaustive whole-wiki audit: shards the wiki so every page is reviewed, with a cross-shard reconciliation pass. It also re-opens the source repos to verify ticket- and doc-derived claims where they make absolute claims or conflict with code, applying *code wins over any ticket* (§4.4). Slower; run it rarely — before relying on the wiki for something important, before a release, or periodically. |
-| `/wiki-lint mechanical` | Runs only the fast deterministic checks: broken `[[wikilinks]]`, orphan pages, duplicate slugs, index drift, and frontmatter gaps. Use it for a quick structural check, or in a pre-commit or CI step. |
+| `/wiki-lint mechanical` | Runs only the fast deterministic checks: broken `[[wikilinks]]`, orphan pages, duplicate slugs, index-catalog drift (exact, against the generated catalog), frontmatter gaps (including `title`/`description`), title↔H1 mismatch, and the `okf_version` declaration. Use it for a quick structural check, or in a pre-commit or CI step. |
 | `/wiki-queue` | Shows pending extract and synth counts per source. Use it to check what is queued before or after a run. |
 | `/wiki-queue all` | Runs a full source scan and enqueues what changed, without ingesting anything. A *source scan* checks Jira and your source repos for items that are new or changed since the last run; it is incremental, so re-running it with nothing new does nothing. Use it when you know new work landed and want it queued now. |
 | `/wiki-queue jira` | Scans Jira only for changes and enqueues them, including the first-time backlog when no cursor exists yet. Use it to prime or refresh Jira without touching repos. |
@@ -98,6 +98,33 @@ Commands are grouped by skill.
 | `/wiki-epic <objective>` | Breaks a broad objective into an epic + child stories. Proposes a numbered breakdown, waits for your approval, then auto-writes the stories. Iterate in the conversation; "save as MD" writes a single `stories/<epic-slug>.md`. |
 | `/wiki-doc-author <title or page>` | Authors or updates ONE customer-facing help page, grounded in the wiki and written to the bundled style guide. Drafts in the conversation; saves Markdown to the configured `docs:` location only when you say "save as MD". |
 | `/wiki-doc-review [<path\|folder>] [factual\|style\|both]` | Reviews customer-facing docs against the wiki (factual: stale/incorrect/missing) and the bundled style guide (style: R-… findings). On-demand, read-only; default scope = configured `docs:`, default lens = both. |
+
+### OKF conformance
+
+Every wiki this plugin maintains is an [Open Knowledge Format (OKF) v0.1](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+bundle, so any OKF-aware tool can consume it directly:
+
+- **Core fields.** Every content page carries `title` (mirrors the H1),
+  `description` (the one-line summary the index catalog renders), and `type`
+  in its YAML frontmatter. `wiki/index.md` declares `okf_version: "0.1"`.
+- **Generated catalog.** The per-category listing in `wiki/index.md` sits inside
+  `<!-- catalog:begin/end -->` markers and is rendered from page `description:`
+  frontmatter by `scripts/build_index.py`; lint fails on any drift. Hand-written
+  prose outside the markers is yours.
+- **Log.** `wiki/log.md` uses OKF date groups (`## YYYY-MM-DD` headings, newest
+  first) with one `- <op> | <payload>` bullet per event.
+- **Extension fields.** `status`, `sources`, `code_refs`, and `updated` are
+  producer extensions; OKF consumers preserve unknown keys, so they travel with
+  the bundle. Confidence tags and supersession sections live in page bodies.
+- **Wikilinks caveat.** Page bodies cross-reference with Obsidian `[[wikilinks]]`
+  (they power lint's neighbor expansion and graph views); an OKF consumer sees
+  them as plain text. The `## References` sections use standard relative Markdown
+  links, so provenance edges remain visible to OKF tools.
+
+Wikis created before v0.12.0 migrate with the one-shot mechanical step offered by
+`/wiki-init` (upgrade mode): it backfills `title`/`description`, restructures
+`log.md`, and inserts the `okf_version` declaration — shown as a dry-run report
+first and applied only on your confirmation.
 
 ### Reviewing online documentation
 
