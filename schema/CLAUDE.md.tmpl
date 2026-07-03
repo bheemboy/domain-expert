@@ -213,6 +213,15 @@ Each References entry **for a Jira/doc source** carries **exactly one link**: th
    expect X to do Y") over the correcting explanation, which ages like any other
    ticket claim. Disposition claims supersede normally (§4.3, §4.4): a newer ticket
    or code that contradicts the decision retires it to `## Superseded`.
+7. **Open tickets are reports.** An unresolved ticket (no resolution yet — e.g. a
+   triaged backlog defect ingested for duplicate detection) records an **unverified
+   report**, not established behaviour. Phrase the claim as a dated report carrying
+   the ticket's status, and cite the ticket's **updated month** (an open ticket has
+   no resolution date):
+   - Write: `Open defect (as of 2026-03, status Ready for Dev): search crashes on empty query [PROJ-456, 2026-03] (ticket-only)`
+   - Not: `Search crashes on empty query [PROJ-456, 2026-03] (ticket-only)`
+   When the ticket is later resolved, its re-ingest replaces the report with the
+   outcome (§4.3): the fixed behaviour, or a §4.6 disposition claim.
 
 ---
 
@@ -388,6 +397,9 @@ deps, binary-doc converters, and the optional qmd search index.
 - Non-fixed tickets (won't-fix / as-designed / duplicate / cannot-reproduce /
   user-misunderstanding): phrase the claim as a dated decision — "Closed as
   won't-fix (2019): …" — never a flat behaviour statement (§4.6).
+- Open (unresolved) tickets: phrase the claim as a dated unverified report —
+  "Open defect (as of 2026-03, status Ready for Dev): …" — cited by the
+  ticket's updated month (§4.7).
 - References link the import for Jira/doc sources (`../../raw/imports/jira/<KEY>.md`; from
   `wiki/overview.md`, `../raw/imports/jira/<KEY>.md`); raw code/prose have no import — the
   inline citation is the provenance.
