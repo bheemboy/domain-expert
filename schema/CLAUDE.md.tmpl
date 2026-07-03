@@ -202,6 +202,17 @@ Each References entry **for a Jira/doc source** carries **exactly one link**: th
    - Code wins over *any* ticket, regardless of date.
 5. Set frontmatter `status: superseded` only if an **entire page's** subject was
    removed/replaced; otherwise keep `current` and use the `## Superseded` section.
+6. **Disposition phrasing for non-fixed tickets.** A ticket resolved without a fix —
+   won't-fix, as-designed, duplicate, cannot-reproduce, user-misunderstanding /
+   not-a-bug — records a **decision**, not an observed behaviour, and decisions can
+   silently expire. State the disposition and its date inside the claim, never the
+   flat assertion:
+   - Write: `Closed as won't-fix (2019): exports beyond 1000 rows not supported [PROJ-123, 2019-04] (ticket-only)`
+   - Not: `Exports beyond 1000 rows are not supported [PROJ-123, 2019-04] (ticket-only)`
+   For user-misunderstanding tickets, prefer the durable meta-fact ("users commonly
+   expect X to do Y") over the correcting explanation, which ages like any other
+   ticket claim. Disposition claims supersede normally (§4.3, §4.4): a newer ticket
+   or code that contradicts the decision retires it to `## Superseded`.
 
 ---
 
@@ -374,6 +385,9 @@ deps, binary-doc converters, and the optional qmd search index.
 - Citations: `[PROJ-1234, 2025-03]` for Jira, `[code: src/...]` for code,
   `[doc: path]` for an authored doc.
 - Confidence: `(code-confirmed)` > `(doc-stated)` > `(ticket-only)`.
+- Non-fixed tickets (won't-fix / as-designed / duplicate / cannot-reproduce /
+  user-misunderstanding): phrase the claim as a dated decision — "Closed as
+  won't-fix (2019): …" — never a flat behaviour statement (§4.6).
 - References link the import for Jira/doc sources (`../../raw/imports/jira/<KEY>.md`; from
   `wiki/overview.md`, `../raw/imports/jira/<KEY>.md`); raw code/prose have no import — the
   inline citation is the provenance.

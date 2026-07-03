@@ -50,7 +50,7 @@ ticket — so capture everything business-relevant, and nothing else.
    business_relevant: true   # false if the ticket has NO business content
    escalate: true            # ONLY if escalating (see step 2); omit otherwise
    ---
-   # <KEY> — <short title>   (type, resolution YYYY-MM)
+   # <KEY> — <short title>   (type, <resolution name> YYYY-MM)
 
    - <business claim, stated precisely> [<KEY>, YYYY-MM] (ticket-only)
    - <another claim> [<KEY>, YYYY-MM] (ticket-only)
@@ -60,7 +60,14 @@ ticket — so capture everything business-relevant, and nothing else.
    Do NOT write a `content_hash` line — the orchestrator stamps it deterministically
    after the subagent returns. Rules for the body: every claim carries `[<KEY>, YYYY-MM]`
    (use the ticket's resolution month) and the `(ticket-only)` confidence tag — you may
-   NEVER assert `(code-confirmed)`. Note which entity/concept each claim is about so
+   NEVER assert `(code-confirmed)`. The H1 carries the ticket's **resolution name**
+   (e.g. `Won't Fix`, `Duplicate`, `Unresolved` — from the ticket's Resolution field).
+   If the ticket was resolved without a fix (won't-fix, as-designed, duplicate,
+   cannot-reproduce, user-misunderstanding / not-a-bug), it records a decision, not an
+   observed behaviour: phrase each claim as a dated decision carrying that disposition
+   (CLAUDE.md §4.6) — `Closed as as-designed (2021): <claim>` — and for
+   user-misunderstanding tickets also capture the durable meta-fact about what users
+   commonly expected. Note which entity/concept each claim is about so
    synthesize can file it. Structure the rest however best captures the ticket. Cite the
    ticket as `[<KEY>](<source_url>)` and any attachment as
    `attachment on [Jira](<source_url>): \`<filename>\` — <note>`. If business meaning
