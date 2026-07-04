@@ -183,3 +183,33 @@ def docs_exclude_globs() -> list[str]:
     """Globs excluding files within each location (ignore.py semantics).
     Defaults to none."""
     return docs_config().get("exclude") or []
+
+
+_DEFECT_REVIEW_DEFAULTS = {
+    "enabled": False,
+    "mode": "draft",
+    "notify_user": "",
+    "candidate_jql": "",
+    "max_question_rounds": 3,
+    "marker": "🤖 Automated defect review —",
+    "also_notify": False,
+    "qmd_collection_prefix": "",
+}
+
+
+def defect_review_config() -> dict:
+    """The optional `defect_review:` block with code-baked defaults.
+
+    `enabled` defaults to False so every wiki opts in explicitly. `mode` is the
+    staged-trust switch: `draft` (notify email, never writes the ticket) or
+    `post` (comments directly). `qmd_collection_prefix` is the unified-index
+    collection prefix on the server (the app-registry key, e.g. `cid` — NOT
+    project.key); empty means per-repo qmd only.
+    """
+    merged = dict(_DEFECT_REVIEW_DEFAULTS)
+    merged.update(load().get("defect_review") or {})
+    if merged["mode"] not in ("draft", "post"):
+        raise ValueError(
+            f"defect_review.mode must be 'draft' or 'post', got {merged['mode']!r}"
+        )
+    return merged
