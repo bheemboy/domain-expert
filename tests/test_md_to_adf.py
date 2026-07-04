@@ -48,3 +48,20 @@ def test_roundtrip_through_adf_to_md():
     assert "One line status." in back
     assert "Which version: 2.7 or 2.8?" in back
     assert "`C:\\logs`" in back
+
+
+def test_empty_input_returns_valid_empty_doc():
+    assert jira_utils.md_to_adf("") == {"type": "doc", "version": 1, "content": []}
+
+
+def _walk_text_nodes(node):
+    if isinstance(node, dict):
+        if node.get("type") == "text":
+            yield node
+        for child in node.get("content", []) or []:
+            yield from _walk_text_nodes(child)
+
+
+def test_no_empty_text_nodes_from_empty_constructs():
+    doc = jira_utils.md_to_adf("- \n\n```\n```\n\n1. real ask")
+    assert all(n["text"] for n in _walk_text_nodes(doc))

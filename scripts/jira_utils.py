@@ -309,7 +309,7 @@ def _md_inline_nodes(text: str) -> list:
         pos = m.end()
     if pos < len(text):
         nodes.append(_adf_text_node(text[pos:]))
-    return nodes or [_adf_text_node("")]
+    return nodes
 
 
 def _collect_md_list(lines: list, i: int) -> tuple:
@@ -372,9 +372,11 @@ def md_to_adf(md: str) -> dict:
             while i < len(lines) and not lines[i].strip().startswith("```"):
                 code.append(lines[i])
                 i += 1
-            i += 1  # closing fence
-            block = {"type": "codeBlock",
-                     "content": [{"type": "text", "text": "\n".join(code)}]}
+            i += 1  # move past the closing fence (or EOF when the fence is unclosed)
+            code_text = "\n".join(code)
+            block = {"type": "codeBlock"}
+            if code_text:
+                block["content"] = [{"type": "text", "text": code_text}]
             if lang:
                 block["attrs"] = {"language": lang}
             blocks.append(block)
