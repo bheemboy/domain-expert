@@ -267,6 +267,137 @@ def _prefix_lines(text: str, prefix: str) -> str:
 
 
 # ─────────────────────────────────────────────
+# Markdown → ADF (comment posting)
+# ─────────────────────────────────────────────
+# Inverse of adf_to_md for the pragmatic subset review comments need:
+# paragraphs, headings, bullet/ordered lists (one nesting level), fenced code,
+# and inline bold/italic/code/links. Unknown constructs degrade to plain text.
+
+_MD_INLINE_RE = re.compile(
+    r"\*\*(?P<strong>.+?)\*\*"
+    r"|\*(?P<em>.+?)\*"
+    r"|`(?P<code>[^`]+)`"
+    r"|\[(?P<ltext>[^\]]+)\]\((?P<lurl>[^)\s]+)\)"
+)
+
+_MD_LIST_ITEM_RE = re.compile(r"^(?P<indent>\s*)(?P<marker>-|\d+[.)])\s+(?P<text>.*)$")
+
+
+def _adf_text_node(text: str, marks: list | None = None) -> dict:
+    node = {"type": "text", "text": text}
+    if marks:
+        node["marks"] = marks
+    return node
+
+
+def _md_inline_nodes(text: str) -> list:
+    nodes, pos = [], 0
+    for m in _MD_INLINE_RE.finditer(text):
+        if m.start() > pos:
+            nodes.append(_adf_text_node(text[pos:m.start()]))
+        if m.group("strong") is not None:
+            nodes.append(_adf_text_node(m.group("strong"), [{"type": "strong"}]))
+        elif m.group("em") is not None:
+            nodes.append(_adf_text_node(m.group("em"), [{"type": "em"}]))
+        elif m.group("code") is not None:
+            nodes.append(_adf_text_node(m.group("code"), [{"type": "code"}]))
+        else:
+            nodes.append(_adf_text_node(
+                m.group("ltext"),
+                [{"type": "link", "attrs": {"href": m.group("lurl")}}],
+            ))
+        pos = m.end()
+    if pos < len(text):
+        nodes.append(_adf_text_node(text[pos:]))
+    return nodes or [_adf_text_node("")]
+
+
+def _collect_md_list(lines: list, i: int) -> tuple:
+    items = []
+    while i < len(lines):
+        m = _MD_LIST_ITEM_RE.match(lines[i])
+        if not m:
+            break
+        items.append((len(m.group("indent")), m.group("marker"), m.group("text")))
+        i += 1
+    return items, i
+
+
+def _build_md_list(items: list) -> dict:
+    """(indent, marker, text) tuples → ADF list; deeper indents nest one level."""
+    top_indent = items[0][0]
+    ordered = items[0][1] != "-"
+    node = {"type": "orderedList" if ordered else "bulletList", "content": []}
+    idx = 0
+    while idx < len(items):
+        _, _, text = items[idx]
+        item = {"type": "listItem",
+                "content": [{"type": "paragraph", "content": _md_inline_nodes(text)}]}
+        idx += 1
+        sub = []
+        while idx < len(items) and items[idx][0] > top_indent:
+            sub.append(items[idx])
+            idx += 1
+        if sub:
+            item["content"].append(_build_md_list(sub))
+        node["content"].append(item)
+    return node
+
+
+def md_to_adf(md: str) -> dict:
+    """Markdown → ADF document for the review-comment subset (see section
+    comment). Always returns a valid `doc` node, empty input included."""
+    lines = (md or "").replace("\r\n", "\n").split("\n")
+    blocks: list = []
+    para: list = []
+
+    def flush_para():
+        if para:
+            blocks.append({"type": "paragraph",
+                           "content": _md_inline_nodes(" ".join(para))})
+            para.clear()
+
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if not stripped:
+            flush_para()
+            i += 1
+            continue
+        if stripped.startswith("```"):
+            flush_para()
+            lang = stripped[3:].strip()
+            code = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code.append(lines[i])
+                i += 1
+            i += 1  # closing fence
+            block = {"type": "codeBlock",
+                     "content": [{"type": "text", "text": "\n".join(code)}]}
+            if lang:
+                block["attrs"] = {"language": lang}
+            blocks.append(block)
+            continue
+        m = re.match(r"^(#{1,6})\s+(.*)$", stripped)
+        if m:
+            flush_para()
+            blocks.append({"type": "heading", "attrs": {"level": len(m.group(1))},
+                           "content": _md_inline_nodes(m.group(2))})
+            i += 1
+            continue
+        if _MD_LIST_ITEM_RE.match(lines[i]):
+            flush_para()
+            items, i = _collect_md_list(lines, i)
+            blocks.append(_build_md_list(items))
+            continue
+        para.append(stripped)
+        i += 1
+    flush_para()
+    return {"type": "doc", "version": 1, "content": blocks}
+
+
+# ─────────────────────────────────────────────
 # FIELD RESOLUTION
 # ─────────────────────────────────────────────
 # Custom field IDs are instance-specific and change on a Server→Cloud
