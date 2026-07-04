@@ -400,6 +400,60 @@ def md_to_adf(md: str) -> dict:
 
 
 # ─────────────────────────────────────────────
+# WRITE PATHS (defect review) — notify email + comment
+# ─────────────────────────────────────────────
+# The plugin's only Jira writes. Failures are LOUD (SystemExit with status and
+# response body) and never fall back: a rejected notify must not degrade into
+# posting a comment (spec §5; required-deps-over-silent-degradation).
+
+
+def resolve_account_id(user: str) -> str:
+    """Jira Cloud notify/mention targets need an accountId. Pass an accountId
+    through untouched; resolve an email via user search."""
+    if "@" not in user:
+        return user
+    url = f"{JIRA_BASE_URL}/rest/api/3/user/search"
+    resp = requests.get(url, params={"query": user},
+                        headers=get_headers(), auth=get_auth())
+    resp.raise_for_status()
+    users = resp.json()
+    if not users:
+        raise SystemExit(f"no Jira user found for {user!r}")
+    return users[0]["accountId"]
+
+
+def build_notify_payload(subject: str, body_text: str, account_id: str) -> dict:
+    return {
+        "subject": subject,
+        "textBody": body_text,
+        "to": {"users": [{"accountId": account_id}]},
+    }
+
+
+def notify_issue(key: str, subject: str, body_text: str, to_user: str) -> None:
+    """Email `to_user` about issue `key` via Jira's notify API. Leaves no trace
+    on the ticket."""
+    payload = build_notify_payload(subject, body_text, resolve_account_id(to_user))
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{key}/notify"
+    resp = requests.post(url, headers=get_headers(), auth=get_auth(), json=payload)
+    if resp.status_code >= 300:
+        raise SystemExit(
+            f"notify {key} failed: HTTP {resp.status_code}: {resp.text[:500]}"
+        )
+
+
+def post_comment(key: str, markdown_body: str) -> None:
+    """Post `markdown_body` (converted to ADF) as a comment on `key`."""
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{key}/comment"
+    resp = requests.post(url, headers=get_headers(), auth=get_auth(),
+                         json={"body": md_to_adf(markdown_body)})
+    if resp.status_code >= 300:
+        raise SystemExit(
+            f"comment on {key} failed: HTTP {resp.status_code}: {resp.text[:500]}"
+        )
+
+
+# ─────────────────────────────────────────────
 # FIELD RESOLUTION
 # ─────────────────────────────────────────────
 # Custom field IDs are instance-specific and change on a Server→Cloud
@@ -795,6 +849,11 @@ def main():
     parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its export-equivalent markdown to stdout (writes no file).")
     parser.add_argument("--stamp-hash", action="store_true", help="Compute content_hash for KEY and write it into raw/imports/jira/<KEY>.md.")
     parser.add_argument("--attachments-dir", type=str, help="Directory to download attachments into (overrides the default assets root).")
+    parser.add_argument("--notify", action="store_true", help="Send a Jira notify email about each KEY (requires --subject, --body-file, --to). Writes nothing to the ticket.")
+    parser.add_argument("--post-comment", action="store_true", help="Post --body-file (markdown) as a comment on each KEY.")
+    parser.add_argument("--subject", type=str, help="Subject line for --notify.")
+    parser.add_argument("--body-file", type=str, help="Path to the markdown body for --notify / --post-comment.")
+    parser.add_argument("--to", dest="to_user", type=str, help="Recipient for --notify: accountId or email.")
     args = parser.parse_args()
 
     if not args.issue_keys and not args.jql:
@@ -812,6 +871,22 @@ def main():
         for key in args.issue_keys:
             stamp_digest_hash(key, imports_jira / f"{key}.md")
             print(f"stamped {key}")
+        return
+
+    if args.notify or args.post_comment:
+        require_credentials()
+        if not args.issue_keys or not args.body_file:
+            parser.error("--notify/--post-comment require ISSUE_KEYS and --body-file")
+        body = Path(args.body_file).read_text(encoding="utf-8")
+        for key in args.issue_keys:
+            if args.notify:
+                if not (args.subject and args.to_user):
+                    parser.error("--notify requires --subject and --to")
+                notify_issue(key, args.subject, body, args.to_user)
+                print(f"notified {args.to_user} about {key}")
+            if args.post_comment:
+                post_comment(key, body)
+                print(f"commented on {key}")
         return
 
     require_credentials()
