@@ -23,8 +23,9 @@ ASK_PROC_WORDS = 330     # 300 + 10% grace
 ASSESS_WORDS = 440       # 400 + 10% grace
 MAX_ASKS = 3
 MAX_PROC_STEPS = 5
+DEFAULT_MARKER = "🤖 Automated defect review —"
 
-_ASK_LINE_RE = re.compile(r"^\d+[.)]\s+", re.MULTILINE)
+_ASK_LINE_RE = re.compile(r"^\d+[.)]\s+")
 _SUBSTEP_RE = re.compile(r"^\s{2,}(?:\d+[.)]|-)\s+")
 _REPORT_RE = re.compile(r"(?i)\b(report|attach|send|reply|tell|paste)\b")
 
@@ -38,7 +39,7 @@ def split_asks(text: str) -> list:
     lines = text.split("\n")
     asks, current = [], None
     for line in lines:
-        if re.match(r"^\d+[.)]\s+", line):
+        if _ASK_LINE_RE.match(line):
             if current is not None:
                 asks.append("\n".join(current))
             current = [line]
@@ -55,12 +56,12 @@ def procedure_steps(ask: str) -> list:
     return [ln for ln in ask.split("\n") if _SUBSTEP_RE.match(ln)]
 
 
-def check(text: str, kind: str) -> list:
+def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
     """Return violations (empty list = compliant). kind: 'ask' | 'assessment'."""
     if kind not in ("ask", "assessment"):
         raise ValueError(f"kind must be 'ask' or 'assessment', got {kind!r}")
     violations = []
-    if "Automated defect review" not in text.split("\n", 1)[0]:
+    if not text.lstrip().startswith(marker):
         violations.append("marker: comment must start with the bot marker line")
     if kind == "assessment":
         wc = word_count(text)
@@ -103,7 +104,7 @@ def main():
     ap = argparse.ArgumentParser(description="Check a draft comment against the contract.")
     ap.add_argument("file", help="Path to the draft comment (markdown).")
     ap.add_argument("--kind", required=True, choices=("ask", "assessment"))
-    ap.add_argument("--marker", default="🤖 Automated defect review —")
+    ap.add_argument("--marker", default=DEFAULT_MARKER)
     ap.add_argument("--fix-marker", action="store_true",
                     help="Prepend the marker in place when missing, before checking.")
     args = ap.parse_args()
@@ -115,7 +116,7 @@ def main():
         if fixed != text:
             path.write_text(fixed, encoding="utf-8")
             text = fixed
-    violations = check(text, args.kind)
+    violations = check(text, args.kind, args.marker)
     for v in violations:
         print(v)
     sys.exit(1 if violations else 0)

@@ -62,3 +62,10 @@ def test_missing_marker_flagged_and_fixed():
     fixed = cc.ensure_marker(text, MARKER)
     assert fixed.startswith(MARKER)
     assert cc.ensure_marker(fixed, MARKER) == fixed  # idempotent
+
+
+def test_check_honors_custom_marker():
+    custom = "[bot] review —"
+    text = f"{custom}\n\n1. Which version?"
+    assert cc.check(text, "ask", marker=custom) == []
+    assert any("marker" in v for v in cc.check(text, "ask"))
