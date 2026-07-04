@@ -20,7 +20,16 @@ files (state, temp attachments) are untracked and live in each wiki's
 1. Claude Code CLI installed, plus the `domain-expert` plugin.
 2. Auth on the server: `claude setup-token` (subscription) or
    `ANTHROPIC_API_KEY` in the wrapper's environment.
-3. Per reviewed wiki, in `wiki.config.yaml`:
+3. Permissions for headless runs: a non-interactive `claude -p` cannot answer
+   permission prompts. In each wiki checkout, pre-approve what the skill
+   runs — the plugin's `python "${CLAUDE_PLUGIN_ROOT}/scripts/…"` commands,
+   `qmd` searches, and temp-file writes — via `.claude/settings.json`
+   permission allow rules (test interactively first), or make an explicit,
+   recorded decision to run the cron with `--dangerously-skip-permissions`
+   on this trusted, single-purpose server. Verify with one manual
+   `claude -p "/wiki-defect-review --auto --dry-run"` run in one checkout
+   before enabling the timer.
+4. Per reviewed wiki, in `wiki.config.yaml`:
 
    ```yaml
    defect_review:
@@ -32,9 +41,9 @@ files (state, temp attachments) are untracked and live in each wiki's
      qmd_collection_prefix: cid   # the app-registry key for THIS wiki (cid, ts, …)
    ```
 
-4. Per reviewed wiki: `<config_dir>/jira.token` (JIRA_EMAIL/JIRA_TOKEN lines,
+5. Per reviewed wiki: `<config_dir>/jira.token` (JIRA_EMAIL/JIRA_TOKEN lines,
    chmod 600) — same layout the plugin uses everywhere.
-5. Confirm each wiki's `.gitignore` covers any path the reviewer could
+6. Confirm each wiki's `.gitignore` covers any path the reviewer could
    create inside the checkout (it should create none — state lives in
    `config_dir` — but verify before first run).
 

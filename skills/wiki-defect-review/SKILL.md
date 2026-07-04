@@ -66,6 +66,9 @@ pasted content as the ticket.
 python "${CLAUDE_PLUGIN_ROOT}/scripts/defect_review_scan.py"
 ```
 
+With `--dry-run`, add `--no-prune` to that command — pruning writes the
+state file, and dry-run must write no state at all.
+
 Empty output → log "no reviewable candidates" and exit 0. Echo the skip
 lines (stderr) into the run log — they are the audit trail.
 
