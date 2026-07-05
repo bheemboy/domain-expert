@@ -24,7 +24,7 @@ from sources import repo_root_of, repo_relative  # canonical home: sources.py
 _PROJECT_KEY = config.project_key()
 _KEY_RE = re.compile(rf"{re.escape(_PROJECT_KEY)}-(\d+)", re.IGNORECASE)
 
-# Binary-doc extensions that get a converted-text digest (Spec §2/§7).
+# Binary-doc extensions that get a converted-text digest.
 _DOC_EXTS = {".pdf", ".docx", ".doc", ".odt", ".pptx", ".ppt", ".xlsx", ".xls"}
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 

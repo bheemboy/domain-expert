@@ -404,7 +404,7 @@ def md_to_adf(md: str) -> dict:
 # ─────────────────────────────────────────────
 # The plugin's only Jira writes. Failures are LOUD (SystemExit with status and
 # response body) and never fall back: a rejected notify must not degrade into
-# posting a comment (spec §5; required-deps-over-silent-degradation).
+# posting a comment.
 
 
 def resolve_account_id(user: str) -> str:

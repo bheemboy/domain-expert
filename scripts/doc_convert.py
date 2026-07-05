@@ -1,6 +1,6 @@
 """doc_convert.py — convert one binary document (PDF/Office) to plain text.
 
-This is the *awkward raw* step: the spec keeps a digest only where raw must be
+This is the *awkward raw* step: a digest is kept only where raw must be
 converted to be readable. Pure of key/digest concerns — given a file path it
 returns text, or None when the file isn't a convertible binary doc or the needed
 tool is missing / fails (the caller then records a media gap).

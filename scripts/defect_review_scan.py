@@ -9,13 +9,13 @@ state, and prints one JSON object per reviewable ticket to stdout:
 Skip reasons go to stderr, one line each:
   cool-down      — activity within the last 10 minutes (still settling)
   bot-spoke-last — latest comment starts with the marker (waiting on submitter)
-  email-pending  — draft already emailed for this exact `updated` (spec §3.4)
+  email-pending  — draft already emailed for this exact `updated`
 
 The 10-minute cool-down is enforced HERE, in code, on the fetched `updated`
 field — not in the JQL. One cool-down-free fetch serves both candidate
 selection and correct pruning (a JQL cool-down would hide still-settling
 tickets from the fetch and prune their state by mistake). The knob stays
-code-owned and independent of the poll cadence, per spec §3.3.
+code-owned and independent of the poll cadence.
 """
 
 import argparse

@@ -7,7 +7,7 @@ ticket key → entry:
                    "question_rounds": 1,
                    "pending_asks": ["OS + CDS client version"] } }
 
-Semantics (spec §3.4): `emailed_for_updated` is the ticket's `updated` value
+Semantics: `emailed_for_updated` is the ticket's `updated` value
 when the last draft email went out — the repeat-email guard (same value next
 poll → stay silent). `question_rounds` counts clarifying-question rounds
 toward the cap. `pending_asks` holds deferred asks (short summaries) that the
@@ -66,7 +66,7 @@ def record(key: str, emailed_for_updated: str | None, question_rounds: int,
 
 
 def prune(keep: set) -> None:
-    """Drop entries for tickets no longer in the candidate set (spec §3.4)."""
+    """Drop entries for tickets no longer in the candidate set."""
     data = _load()
     pruned = {k: v for k, v in data.items() if k in keep}
     if pruned != data:

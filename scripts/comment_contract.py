@@ -1,4 +1,4 @@
-"""comment_contract.py — mechanical enforcement of the comment contract (spec §3.1a, §5).
+"""comment_contract.py — mechanical enforcement of the comment contract.
 
 The LLM drafts; this module verifies. Prompts drift, so budgets and structure
 are never left to the prompt alone. Two kinds:
@@ -8,7 +8,7 @@ are never left to the prompt alone. Two kinds:
                procedure).
   assessment — review-team-facing: ~400 words, organized sections.
 
-Word budgets carry 10% grace: the spec's "~" budgets are targets, the hard
+Word budgets carry 10% grace: the ~150/300/400 budgets are targets, the hard
 ceilings here are target × 1.1. The marker is enforced mechanically too:
 every delivered comment starts with the configured marker string.
 """
