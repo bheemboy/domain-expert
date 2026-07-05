@@ -267,6 +267,193 @@ def _prefix_lines(text: str, prefix: str) -> str:
 
 
 # ─────────────────────────────────────────────
+# Markdown → ADF (comment posting)
+# ─────────────────────────────────────────────
+# Inverse of adf_to_md for the pragmatic subset review comments need:
+# paragraphs, headings, bullet/ordered lists (one nesting level), fenced code,
+# and inline bold/italic/code/links. Unknown constructs degrade to plain text.
+
+_MD_INLINE_RE = re.compile(
+    r"\*\*(?P<strong>.+?)\*\*"
+    r"|\*(?P<em>.+?)\*"
+    r"|`(?P<code>[^`]+)`"
+    r"|\[(?P<ltext>[^\]]+)\]\((?P<lurl>[^)\s]+)\)"
+)
+
+_MD_LIST_ITEM_RE = re.compile(r"^(?P<indent>\s*)(?P<marker>-|\d+[.)])\s+(?P<text>.*)$")
+
+
+def _adf_text_node(text: str, marks: list | None = None) -> dict:
+    node = {"type": "text", "text": text}
+    if marks:
+        node["marks"] = marks
+    return node
+
+
+def _md_inline_nodes(text: str) -> list:
+    nodes, pos = [], 0
+    for m in _MD_INLINE_RE.finditer(text):
+        if m.start() > pos:
+            nodes.append(_adf_text_node(text[pos:m.start()]))
+        if m.group("strong") is not None:
+            nodes.append(_adf_text_node(m.group("strong"), [{"type": "strong"}]))
+        elif m.group("em") is not None:
+            nodes.append(_adf_text_node(m.group("em"), [{"type": "em"}]))
+        elif m.group("code") is not None:
+            nodes.append(_adf_text_node(m.group("code"), [{"type": "code"}]))
+        else:
+            nodes.append(_adf_text_node(
+                m.group("ltext"),
+                [{"type": "link", "attrs": {"href": m.group("lurl")}}],
+            ))
+        pos = m.end()
+    if pos < len(text):
+        nodes.append(_adf_text_node(text[pos:]))
+    return nodes
+
+
+def _collect_md_list(lines: list, i: int) -> tuple:
+    items = []
+    while i < len(lines):
+        m = _MD_LIST_ITEM_RE.match(lines[i])
+        if not m:
+            break
+        items.append((len(m.group("indent")), m.group("marker"), m.group("text")))
+        i += 1
+    return items, i
+
+
+def _build_md_list(items: list) -> dict:
+    """(indent, marker, text) tuples → ADF list; deeper indents nest one level."""
+    top_indent = items[0][0]
+    ordered = items[0][1] != "-"
+    node = {"type": "orderedList" if ordered else "bulletList", "content": []}
+    idx = 0
+    while idx < len(items):
+        _, _, text = items[idx]
+        item = {"type": "listItem",
+                "content": [{"type": "paragraph", "content": _md_inline_nodes(text)}]}
+        idx += 1
+        sub = []
+        while idx < len(items) and items[idx][0] > top_indent:
+            sub.append(items[idx])
+            idx += 1
+        if sub:
+            item["content"].append(_build_md_list(sub))
+        node["content"].append(item)
+    return node
+
+
+def md_to_adf(md: str) -> dict:
+    """Markdown → ADF document for the review-comment subset (see section
+    comment). Always returns a valid `doc` node, empty input included."""
+    lines = (md or "").replace("\r\n", "\n").split("\n")
+    blocks: list = []
+    para: list = []
+
+    def flush_para():
+        if para:
+            blocks.append({"type": "paragraph",
+                           "content": _md_inline_nodes(" ".join(para))})
+            para.clear()
+
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if not stripped:
+            flush_para()
+            i += 1
+            continue
+        if stripped.startswith("```"):
+            flush_para()
+            lang = stripped[3:].strip()
+            code = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code.append(lines[i])
+                i += 1
+            i += 1  # move past the closing fence (or EOF when the fence is unclosed)
+            code_text = "\n".join(code)
+            block = {"type": "codeBlock"}
+            if code_text:
+                block["content"] = [{"type": "text", "text": code_text}]
+            if lang:
+                block["attrs"] = {"language": lang}
+            blocks.append(block)
+            continue
+        m = re.match(r"^(#{1,6})\s+(.*)$", stripped)
+        if m:
+            flush_para()
+            blocks.append({"type": "heading", "attrs": {"level": len(m.group(1))},
+                           "content": _md_inline_nodes(m.group(2))})
+            i += 1
+            continue
+        if _MD_LIST_ITEM_RE.match(lines[i]):
+            flush_para()
+            items, i = _collect_md_list(lines, i)
+            blocks.append(_build_md_list(items))
+            continue
+        para.append(stripped)
+        i += 1
+    flush_para()
+    return {"type": "doc", "version": 1, "content": blocks}
+
+
+# ─────────────────────────────────────────────
+# WRITE PATHS (defect review) — notify email + comment
+# ─────────────────────────────────────────────
+# The plugin's only Jira writes. Failures are LOUD (SystemExit with status and
+# response body) and never fall back: a rejected notify must not degrade into
+# posting a comment (spec §5; required-deps-over-silent-degradation).
+
+
+def resolve_account_id(user: str) -> str:
+    """Jira Cloud notify/mention targets need an accountId. Pass an accountId
+    through untouched; resolve an email via user search."""
+    if "@" not in user:
+        return user
+    url = f"{JIRA_BASE_URL}/rest/api/3/user/search"
+    resp = requests.get(url, params={"query": user},
+                        headers=get_headers(), auth=get_auth())
+    resp.raise_for_status()
+    users = resp.json()
+    if not users:
+        raise SystemExit(f"no Jira user found for {user!r}")
+    return users[0]["accountId"]
+
+
+def build_notify_payload(subject: str, body_text: str, account_id: str) -> dict:
+    return {
+        "subject": subject,
+        "textBody": body_text,
+        "to": {"users": [{"accountId": account_id}]},
+    }
+
+
+def notify_issue(key: str, subject: str, body_text: str, to_user: str) -> None:
+    """Email `to_user` about issue `key` via Jira's notify API. Leaves no trace
+    on the ticket."""
+    payload = build_notify_payload(subject, body_text, resolve_account_id(to_user))
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{key}/notify"
+    resp = requests.post(url, headers=get_headers(), auth=get_auth(), json=payload)
+    if resp.status_code >= 300:
+        raise SystemExit(
+            f"notify {key} failed: HTTP {resp.status_code}: {resp.text[:500]}"
+        )
+
+
+def post_comment(key: str, markdown_body: str) -> None:
+    """Post `markdown_body` (converted to ADF) as a comment on `key`."""
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{key}/comment"
+    resp = requests.post(url, headers=get_headers(), auth=get_auth(),
+                         json={"body": md_to_adf(markdown_body)})
+    if resp.status_code >= 300:
+        raise SystemExit(
+            f"comment on {key} failed: HTTP {resp.status_code}: {resp.text[:500]}"
+        )
+
+
+# ─────────────────────────────────────────────
 # FIELD RESOLUTION
 # ─────────────────────────────────────────────
 # Custom field IDs are instance-specific and change on a Server→Cloud
@@ -662,6 +849,11 @@ def main():
     parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its export-equivalent markdown to stdout (writes no file).")
     parser.add_argument("--stamp-hash", action="store_true", help="Compute content_hash for KEY and write it into raw/imports/jira/<KEY>.md.")
     parser.add_argument("--attachments-dir", type=str, help="Directory to download attachments into (overrides the default assets root).")
+    parser.add_argument("--notify", action="store_true", help="Send a Jira notify email about each KEY (requires --subject, --body-file, --to). Writes nothing to the ticket.")
+    parser.add_argument("--post-comment", action="store_true", help="Post --body-file (markdown) as a comment on each KEY.")
+    parser.add_argument("--subject", type=str, help="Subject line for --notify.")
+    parser.add_argument("--body-file", type=str, help="Path to the markdown body for --notify / --post-comment.")
+    parser.add_argument("--to", dest="to_user", type=str, help="Recipient for --notify: accountId or email.")
     args = parser.parse_args()
 
     if not args.issue_keys and not args.jql:
@@ -679,6 +871,22 @@ def main():
         for key in args.issue_keys:
             stamp_digest_hash(key, imports_jira / f"{key}.md")
             print(f"stamped {key}")
+        return
+
+    if args.notify or args.post_comment:
+        require_credentials()
+        if not args.issue_keys or not args.body_file:
+            parser.error("--notify/--post-comment require ISSUE_KEYS and --body-file")
+        body = Path(args.body_file).read_text(encoding="utf-8")
+        for key in args.issue_keys:
+            if args.notify:
+                if not (args.subject and args.to_user):
+                    parser.error("--notify requires --subject and --to")
+                notify_issue(key, args.subject, body, args.to_user)
+                print(f"notified {args.to_user} about {key}")
+            if args.post_comment:
+                post_comment(key, body)
+                print(f"commented on {key}")
         return
 
     require_credentials()

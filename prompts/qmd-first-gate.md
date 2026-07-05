@@ -14,3 +14,15 @@ Do NOT default to grep.
 
 The `qmd status` check IS the cheap step — never skip straight to `grep -ri`
 while `.qmd/` is present.
+
+4. **Unified server index (only when `$WIKI_INDEX_ROOT` is set):** the index
+   is the shared one at `$WIKI_INDEX_ROOT/.qmd` — run qmd from that
+   directory — and collections are namespaced per product:
+   `cd "$WIKI_INDEX_ROOT" && qmd search -c <prefix>__wiki "<key nouns>"`
+   (likewise `<prefix>__raw`), where `<prefix>` is the wiki's configured
+   `defect_review.qmd_collection_prefix` (the app-registry key, e.g. `cid` —
+   NOT the Jira project key). That index is shared with a running app:
+   treat it as READ-ONLY — never `qmd update`, `qmd embed`, or
+   `qmd collection add` against it; its maintenance belongs to the content
+   service's sync. If `$WIKI_INDEX_ROOT` is set but the prefix is not
+   configured, fall back to steps 1–3 in the repo itself.

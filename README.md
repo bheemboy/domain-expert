@@ -98,6 +98,7 @@ Commands are grouped by skill.
 | `/wiki-epic <objective>` | Breaks a broad objective into an epic + child stories. Proposes a numbered breakdown, waits for your approval, then auto-writes the stories. Iterate in the conversation; "save as MD" writes a single `stories/<epic-slug>.md`. |
 | `/wiki-doc-author <title or page>` | Authors or updates ONE customer-facing help page, grounded in the wiki and written to the bundled style guide. Drafts in the conversation; saves Markdown to the configured `docs:` location only when you say "save as MD". |
 | `/wiki-doc-review [<path\|folder>] [factual\|style\|both]` | Reviews customer-facing docs against the wiki (factual: stale/incorrect/missing) and the bundled style guide (style: R-… findings). On-demand, read-only; default scope = configured `docs:`, default lens = both. |
+| `/wiki-defect-review [<KEY> \| --auto [--dry-run]]` | Reviews a new defect like a human reviewer — clarifying asks, troubleshooting steps, scope check, duplicates, verdict — grounded in the wiki. Interactive per ticket, or `--auto` polling for servers (draft-email first, direct posting after the trust flip). |
 
 ### OKF conformance
 
@@ -129,6 +130,17 @@ first and applied only on your confirmation.
 ### Reviewing online documentation
 
 The `/wiki-doc-review` command reviews your documented APIs, guides, and other customer-facing material against the wiki and a bundled style guide. It draws its doc locations from the `docs:` block in `wiki.config.yaml` (see [Start a new wiki for a product](#start-a-new-wiki-for-a-product) for setup).
+
+### Defect review
+
+The `/wiki-defect-review` command acts as a first-line reviewer on newly
+submitted defects: it reads the ticket (screenshots included), asks the
+submitter sharply-scoped clarifying questions or troubleshooting steps when
+the report is thin, judges whether the defect belongs to the product, finds
+duplicates in the wiki and in recent Jira, and delivers a structured verdict.
+It is configured per wiki via a `defect_review:` block in `wiki.config.yaml`
+and runs either interactively or headless on a schedule — see
+`skills/wiki-defect-review/references/server-setup.md` for the server recipe.
 
 ### Ignore filtering
 
