@@ -20,6 +20,10 @@ files (state, temp attachments) are untracked and live in each wiki's
 1. Claude Code CLI installed, plus the `domain-expert` plugin.
 2. Auth on the server: `claude setup-token` (subscription) or
    `ANTHROPIC_API_KEY` in the wrapper's environment.
+   **Model floor: Opus.** Side-by-side runs on real tickets showed smaller
+   models produce noticeably weaker reviews. The wrapper pins
+   `--model "${DEFECT_REVIEW_MODEL:-opus}"` — override the env var only to
+   go *up* (e.g. a Mythos-class model), never below Opus.
 3. Permissions for headless runs: a non-interactive `claude -p` cannot answer
    permission prompts. In each wiki checkout, pre-approve what the skill
    runs — the plugin's `python "${CLAUDE_PLUGIN_ROOT}/scripts/…"` commands,
@@ -90,7 +94,7 @@ for d in "$WIKI_INDEX_ROOT"/*/; do
   [[ -n "$prefix" ]] || {
     log "ERROR: $(basename "$d") enabled but not in registry $DOMAIN_EXPERT_REGISTRY"; rc=1; continue; }
   log "reviewing $(basename "$d") (qmd prefix: $prefix)"
-  ( cd "$d" && WIKI_QMD_PREFIX="$prefix" claude -p "/wiki-defect-review --auto" ) || {
+  ( cd "$d" && WIKI_QMD_PREFIX="$prefix" claude -p --model "${DEFECT_REVIEW_MODEL:-opus}" "/wiki-defect-review --auto" ) || {
     log "ERROR: review failed in $(basename "$d")"; rc=1; }
 done
 exit $rc

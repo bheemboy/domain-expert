@@ -20,6 +20,11 @@ text in the conversation.
   decision instead of delivering; writes no state. Run this first on a new
   server.
 
+**Model floor: Opus or better.** Smaller models produce noticeably weaker
+reviews on real tickets. Headless runs pin the model in the wrapper; for an
+interactive review on a smaller session model, tell the user their comment
+draft may be below par and suggest re-running on Opus.
+
 ---
 
 ## 1. Guardrails

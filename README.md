@@ -168,6 +168,12 @@ Use your project's real issue-type and status names in `candidate_jql`
 the 10-minute cool-down, and the bot marker are supplied by code and never
 belong in the JQL.
 
+**Model floor: Opus or better.** Side-by-side runs of the same ticket on
+different models showed smaller models produce noticeably weaker reviews.
+The server wrapper pins `--model opus` (override upward via
+`DEFECT_REVIEW_MODEL`); for interactive spot reviews, use an Opus-class
+session.
+
 **Rollout ladder** — earn trust one rung at a time:
 
 1. **Interactive spot reviews** on a few real tickets (a thin report, a
