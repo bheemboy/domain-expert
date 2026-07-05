@@ -35,6 +35,25 @@ lint:
   brand_nouns: {{BRAND_TERMS_YAML_LIST}}
   era_terms: []    # optional list of retired era/version terms (e.g. ["v1", "legacy"])
 
+# Optional. Enables /wiki-defect-review as a first-line reviewer on this
+# project's new defects (see README "Defect review" for the rollout ladder).
+# Interactive spot reviews (`/wiki-defect-review <KEY>`) work without this
+# block; `--auto` polling requires it and is OFF until `enabled: true`.
+# `mode` is the trust switch: `draft` emails you each proposed comment via
+# Jira's notify API (nothing appears on the ticket; you paste the good ones);
+# `post` comments directly. Use your project's real issue-type/status names
+# in candidate_jql (Defect vs Bug varies per project). The project key, the
+# 10-minute cool-down, and the bot marker are supplied by code — never put
+# them in the JQL. `qmd_collection_prefix` is only for servers with a unified
+# qmd index (the app-registry key, e.g. `cid` — NOT the Jira project key).
+# defect_review:
+#   enabled: true
+#   mode: draft                  # draft | post
+#   notify_user: you@example.com
+#   candidate_jql: 'issuetype = Defect AND status in ("New", "Open")'
+#   max_question_rounds: 3
+#   qmd_collection_prefix: ""    # server/unified-index only; leave "" on dev
+
 # Optional. Tunes how the synth phase batches and routes work. Everything here is
 # commented out: the pipeline ships with these exact defaults baked in, so you only
 # need a key if you want to override it after watching real ingests. Lines are raw
