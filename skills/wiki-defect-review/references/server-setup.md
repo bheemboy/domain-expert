@@ -17,7 +17,25 @@ files (state, temp attachments) are untracked and live in each wiki's
 
 ## Prerequisites
 
-1. Claude Code CLI installed, plus the `domain-expert` plugin.
+**The content service half is not set up here.** Checkouts under
+`$WIKI_INDEX_ROOT`, the registry, the unified qmd index build, and the
+sync/update timers are installed per the app repo's
+`deploy/README-deploy.md` (§1a–1g: node + qmd CLI, content clones,
+registry.yaml, first index build, systemd units). This doc covers only
+what the *reviewer* adds on top.
+
+1. Install the reviewer's toolchain (the app does not provide these):
+   - **Claude Code CLI** — same installer you used on dev; verify with
+     `claude --version` as the service user.
+   - **The `domain-expert` plugin** — add your plugin marketplace and
+     install it exactly as on the dev machine; verify
+     `/wiki-defect-review` appears in an interactive session in a wiki
+     checkout.
+   - **Python deps for the plugin's scripts** — `pip install requests pyyaml`
+     (system or service-user python3; the wrapper's registry lookup needs
+     `pyyaml` too). Do NOT install the plugin's full `requirements.txt`
+     here: `docling` (~2 GB with models) is for doc ingest, which never
+     runs on this server.
 2. Auth on the server: `claude setup-token` (subscription) or
    `ANTHROPIC_API_KEY` in the wrapper's environment.
    **Model floor: Opus.** Side-by-side runs on real tickets showed smaller
@@ -125,6 +143,15 @@ exit $rc
 
 - qmd concurrent reads: with the app up, run a search from `$WIKI_INDEX_ROOT`
   while `qmd_sync` runs; confirm no errors/locks.
-- Notify API: `python jira_utils.py <KEY> --notify --subject test --body-file /tmp/t.md --to you@example.com`
-  on a throwaway ticket; confirm the email arrives and nothing shows on the
-  ticket.
+- Notify API — from **inside a wiki checkout** (the script locates
+  `wiki.config.yaml` from the working directory), with `<plugin-root>` =
+  the installed plugin's path (find it via `claude plugin list` or under
+  `~/.claude/plugins/`):
+
+  ```
+  cd $WIKI_INDEX_ROOT/cid-wiki
+  python <plugin-root>/scripts/jira_utils.py <KEY> --notify --subject test --body-file /tmp/t.md --to you@example.com
+  ```
+
+  Use a throwaway ticket; confirm the email arrives and nothing shows on
+  the ticket.
