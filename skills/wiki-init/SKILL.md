@@ -72,17 +72,14 @@ no config → **bootstrap**; config present → **upgrade**.
 5. **Append missing optional config blocks** to `wiki.config.yaml` — the config
    counterpart of step 2's Documentation-Domain-Context rule: repos created
    before an optional block existed gain it on upgrade, commented and inert,
-   without losing a single hand-edited line. For each optional top-level block
-   in `templates/wiki.config.yaml.tmpl` (`docs:`, `synth_tuning:`, `ignore:`,
-   `defect_review:`):
-   - Present check: the config has a line starting with `<key>:` or `# <key>:`
-     (the key at top level, active or commented). Present → leave the repo's
-     version completely alone.
-   - Absent → append the template's block verbatim (its explanatory comment
-     paragraph plus the commented-out keys) to the END of the file.
-   **Append-only**: never modify, reorder, uncomment, or fill in existing
-   config content. Show one diff of the appended text and ask for
-   confirmation before writing.
+   without losing a single hand-edited line. Deterministic — never edit the
+   config yourself:
+   a. `python "${CLAUDE_PLUGIN_ROOT}/scripts/config_upgrade.py"` (dry-run) —
+      prints the blocks that would be appended (`docs:`, `synth_tuning:`,
+      `ignore:`, `defect_review:` when absent; a key present at top level,
+      active or commented, always leaves the repo's version alone).
+   b. Show the human the dry-run output; on confirmation, re-run with
+      `--write`. "All optional blocks present" → nothing to do.
 6. **OKF migration (pre-OKF wikis only).** Detect a pre-OKF wiki: content pages
    missing `title:`/`description:` frontmatter, or `## [` event headings in
    `wiki/log.md`, or no `okf_version` in `wiki/index.md`. If detected:
