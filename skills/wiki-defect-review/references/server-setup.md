@@ -1,13 +1,14 @@
 # Server setup — automated defect review
 
-The reviewer is a **read-only consumer of the wiki content service** that
-already exists on the server for `domain-expert-app`:
+The server runs three sibling components, each its own repo:
 
-- content checkouts under `$WIKI_INDEX_ROOT/*/` (one per product);
-- a unified qmd index at `$WIKI_INDEX_ROOT/.qmd` with `<prefix>__wiki` /
-  `<prefix>__raw` collections;
-- the app's `domain-expert-update.timer` (15 min) pulling all checkouts and
-  refreshing the index in the same run.
+| Repo | Role |
+|---|---|
+| `domain-expert-wiki-mgr` | content service: checkouts under `$WIKI_INDEX_ROOT/*/`, the registry, the unified qmd index (`<prefix>__wiki` / `<prefix>__raw`), one 15-min sync timer |
+| `domain-expert-app` | Q&A web app (independent consumer) |
+| `domain-expert-defect-reviewer` | the reviewer's scheduler: `defect-review-all.sh` + a 5-min systemd timer running `claude -p "/wiki-defect-review --auto"` per enabled wiki |
+
+The reviewer is a **read-only consumer of the content service**.
 
 The reviewer NEVER: runs `git pull`, runs `qmd update`/`qmd embed`, or
 writes a tracked file in any checkout (the sync is fail-loud on dirty
@@ -17,12 +18,12 @@ files (state, temp attachments) are untracked and live in each wiki's
 
 ## Prerequisites
 
-**The content service half is not set up here.** Checkouts under
-`$WIKI_INDEX_ROOT`, the registry, the unified qmd index build, and the
-sync/update timers are installed per the app repo's
-`deploy/README-deploy.md` (§1a–1g: node + qmd CLI, content clones,
-registry.yaml, first index build, systemd units). This doc covers only
-what the *reviewer* adds on top.
+**Install order:** `domain-expert-wiki-mgr` first (its README: content
+clones, registry, first index build, sync timer), then the reviewer via
+`domain-expert-defect-reviewer` (its README: wrapper script + systemd
+units + install commands). This doc is the *contract and rollout* — what
+the reviewer needs configured and how to earn trust; the install
+mechanics live in those two READMEs.
 
 1. Install the reviewer's toolchain (the app does not provide these):
    - **Claude Code CLI** — same installer you used on dev; verify with
@@ -47,7 +48,7 @@ what the *reviewer* adds on top.
    runs — the plugin's `python "${CLAUDE_PLUGIN_ROOT}/scripts/…"` commands,
    `qmd` searches, and temp-file writes — via `.claude/settings.json`
    permission allow rules (test interactively first), or make an explicit,
-   recorded decision to run the cron with `--dangerously-skip-permissions`
+   recorded decision to run the sweep with `--dangerously-skip-permissions`
    on this trusted, single-purpose server. Verify with one manual
    `claude -p "/wiki-defect-review --auto --dry-run"` run in one checkout
    before enabling the timer.
@@ -71,62 +72,26 @@ what the *reviewer* adds on top.
    create inside the checkout (it should create none — state lives in
    `config_dir` — but verify before first run).
 
-## Wrapper script
+## Scheduler
 
-Install as `/usr/local/bin/defect-review-all.sh` (chmod +x):
+The canonical wrapper (`defect-review-all.sh`) and its systemd units live
+in the `domain-expert-defect-reviewer` repo — install per its README. What
+they do, which is the contract this skill relies on:
 
-```bash
-#!/usr/bin/env bash
-# defect-review-all.sh — run /wiki-defect-review --auto in each enabled wiki.
-# Read-only consumer of the content service: NO git pull, NO qmd maintenance.
-set -uo pipefail
+- every 5 minutes (systemd timer, oneshot — runs never overlap), iterate
+  `$WIKI_INDEX_ROOT/*/`, skipping wikis without `defect_review.enabled: true`;
+- per enabled wiki, derive the qmd collection prefix from the registry and
+  export it as `$WIKI_QMD_PREFIX`, then run
+  `claude -p --model "${DEFECT_REVIEW_MODEL:-opus}" "/wiki-defect-review --auto"`
+  from inside that checkout;
+- never `git pull`, never qmd maintenance, never write tracked files —
+  the content service owns all of that;
+- one wiki failing logs an ERROR and the sweep continues, exiting non-zero
+  at the end so the unit shows in `systemctl --failed`.
 
-: "${WIKI_INDEX_ROOT:?set WIKI_INDEX_ROOT to the parent dir of the content checkouts}"
-: "${DOMAIN_EXPERT_REGISTRY:?set DOMAIN_EXPERT_REGISTRY to the registry.yaml path}"
-export WIKI_INDEX_ROOT
-
-log() { printf '%s defect-review: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*"; }
-
-# Registry key for a checkout (the qmd collection prefix, e.g. cid). The
-# registry is the content service's single source of truth for key -> root.
-prefix_for() {  # prefix_for <checkout-dir>
-  python3 - "$1" <<'PY'
-import sys, pathlib, os, yaml
-target = pathlib.Path(sys.argv[1]).resolve()
-reg = yaml.safe_load(open(os.environ["DOMAIN_EXPERT_REGISTRY"])) or {}
-for w in reg.get("wikis") or []:
-    if pathlib.Path(w["root"]).expanduser().resolve() == target:
-        print(w["key"])
-        break
-PY
-}
-
-rc=0
-for d in "$WIKI_INDEX_ROOT"/*/; do
-  d="${d%/}"
-  [[ -f "$d/wiki.config.yaml" ]] || continue
-  # Cheap enabled gate — the skill re-checks, this just skips the claude spawn.
-  grep -qE '^\s*enabled:\s*true' <(sed -n '/^defect_review:/,/^[^[:space:]]/p' "$d/wiki.config.yaml") || {
-    log "skip $(basename "$d") (defect_review not enabled)"; continue; }
-  prefix=$(prefix_for "$d")
-  [[ -n "$prefix" ]] || {
-    log "ERROR: $(basename "$d") enabled but not in registry $DOMAIN_EXPERT_REGISTRY"; rc=1; continue; }
-  log "reviewing $(basename "$d") (qmd prefix: $prefix)"
-  ( cd "$d" && WIKI_QMD_PREFIX="$prefix" claude -p --model "${DEFECT_REVIEW_MODEL:-opus}" "/wiki-defect-review --auto" ) || {
-    log "ERROR: review failed in $(basename "$d")"; rc=1; }
-done
-exit $rc
-```
-
-## Cron
-
-```
-*/5 * * * * WIKI_INDEX_ROOT=/srv/wikis DOMAIN_EXPERT_REGISTRY=/etc/domain-expert/registry.yaml flock -n /run/defect-review.lock /usr/local/bin/defect-review-all.sh >> /var/log/defect-review.log 2>&1
-```
-
-- 5-minute cadence; the 10-minute cool-down is enforced by the scanner
-  itself — the two knobs are independent.
-- `flock -n` skips a tick while the previous run is still going.
+The 5-minute cadence and the skill's 10-minute settle cool-down are
+independent knobs: the timer is how often the bot looks; the scanner
+decides what qualifies.
 
 ## Rollout order
 
@@ -134,7 +99,7 @@ exit $rc
    tickets: thin report, out-of-scope, exact dupe, near dupe, clean defect.
 2. On the server: enable cid-wiki only, run once by hand with
    `--auto --dry-run`, read every decision.
-3. Enable the cron with `mode: draft`. Read the notify emails for a week or
+3. Enable the timer with `mode: draft`. Read the notify emails for a week or
    two; paste the good ones.
 4. Flip cid-wiki to `mode: post` when the drafts are consistently
    paste-worthy. Enable ts-wiki (`enabled: true`) when ready.
