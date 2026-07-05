@@ -32,7 +32,7 @@ no config → **bootstrap**; config present → **upgrade**.
    Render each placeholder in the format its surrounding file requires at substitution time.
    Files scaffolded:
    - `wiki/` tree (index.md, overview.md, log.md, and the five category dirs).
-   - `wiki.config.yaml` from `templates/wiki.config.yaml.tmpl` (keys: Jira base_url/jql, sources, config_dir, lint terms, optional docs: location).
+   - `wiki.config.yaml` from `templates/wiki.config.yaml.tmpl` (keys: Jira base_url/jql, sources, config_dir, lint terms; optional commented blocks: `docs:`, `synth_tuning:`, `ignore:`, `defect_review:`).
    - `CLAUDE.md` from `${CLAUDE_PLUGIN_ROOT}/schema/CLAUDE.md.tmpl` — its §0 carries
      the optional, commented **Documentation Domain Context** override block (vendor
      identity, identifier sweep, `platform`, project term table) for `/wiki-doc-*`;
@@ -69,7 +69,21 @@ no config → **bootstrap**; config present → **upgrade**.
    - Present and identical → nothing to do.
    - Present but differs → show a diff and ask for confirmation before overwriting
      (a user *may* have hand-edited it); on confirm, copy and keep it executable.
-5. **OKF migration (pre-OKF wikis only).** Detect a pre-OKF wiki: content pages
+5. **Append missing optional config blocks** to `wiki.config.yaml` — the config
+   counterpart of step 2's Documentation-Domain-Context rule: repos created
+   before an optional block existed gain it on upgrade, commented and inert,
+   without losing a single hand-edited line. For each optional top-level block
+   in `templates/wiki.config.yaml.tmpl` (`docs:`, `synth_tuning:`, `ignore:`,
+   `defect_review:`):
+   - Present check: the config has a line starting with `<key>:` or `# <key>:`
+     (the key at top level, active or commented). Present → leave the repo's
+     version completely alone.
+   - Absent → append the template's block verbatim (its explanatory comment
+     paragraph plus the commented-out keys) to the END of the file.
+   **Append-only**: never modify, reorder, uncomment, or fill in existing
+   config content. Show one diff of the appended text and ask for
+   confirmation before writing.
+6. **OKF migration (pre-OKF wikis only).** Detect a pre-OKF wiki: content pages
    missing `title:`/`description:` frontmatter, or `## [` event headings in
    `wiki/log.md`, or no `okf_version` in `wiki/index.md`. If detected:
    a. `python "${CLAUDE_PLUGIN_ROOT}/scripts/migrate_okf.py"` (dry-run) — show the
@@ -83,9 +97,11 @@ no config → **bootstrap**; config present → **upgrade**.
       (advisory `description-long` WARNs are expected on wikis with paragraph-length
       index summaries — surface them, don't fix them mechanically).
    Skip this step entirely when no pre-OKF marker is found.
-6. **Never** touch `raw/` or `wiki.config.yaml`. `CLAUDE.md` and `qmd_sync.sh` are
-   the normal upgrade surface; `wiki/` is modified **only** by the explicit,
-   human-confirmed OKF migration in step 5.
+7. **Never** touch `raw/`. `wiki.config.yaml` is **append-only** (step 5:
+   missing optional blocks, commented, diff-confirmed) — existing lines are
+   never modified. `CLAUDE.md` and `qmd_sync.sh` are the normal upgrade
+   surface; `wiki/` is modified **only** by the explicit, human-confirmed
+   OKF migration in step 6.
 
 ## Guardrails
 - Never overwrite an existing `wiki.config.yaml` or non-empty `wiki/` during bootstrap;
