@@ -193,7 +193,6 @@ _DEFECT_REVIEW_DEFAULTS = {
     "max_question_rounds": 3,
     "marker": "🤖 Automated defect review —",
     "also_notify": False,
-    "qmd_collection_prefix": "",
 }
 
 
@@ -202,9 +201,8 @@ def defect_review_config() -> dict:
 
     `enabled` defaults to False so every wiki opts in explicitly. `mode` is the
     staged-trust switch: `draft` (notify email, never writes the ticket) or
-    `post` (comments directly). `qmd_collection_prefix` is the unified-index
-    collection prefix on the server (the app-registry key, e.g. `cid` — NOT
-    project.key); empty means per-repo qmd only.
+    `post` (comments directly). Environment-specific values ($WIKI_QMD_PREFIX,
+    $WIKI_INDEX_ROOT) are env vars, never keys here.
     """
     merged = dict(_DEFECT_REVIEW_DEFAULTS)
     merged.update(load().get("defect_review") or {})

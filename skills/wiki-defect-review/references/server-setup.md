@@ -36,10 +36,12 @@ files (state, temp attachments) are untracked and live in each wiki's
      enabled: true
      mode: draft                  # flip to `post` only after the draft phase earns trust
      notify_user: you@example.com
-     candidate_jql: 'issuetype = Bug AND status in ("New", "Open")'
+     candidate_jql: 'issuetype = Defect AND status in ("New", "Open")'  # your project's real type/status names
      max_question_rounds: 3
-     qmd_collection_prefix: cid   # the app-registry key for THIS wiki (cid, ts, …)
    ```
+
+   The qmd collection prefix is not a config key — the wrapper derives it
+   from the registry and exports `$WIKI_QMD_PREFIX` (see below).
 
 5. Per reviewed wiki: `<config_dir>/jira.token` (JIRA_EMAIL/JIRA_TOKEN lines,
    chmod 600) — same layout the plugin uses everywhere.
@@ -58,9 +60,24 @@ Install as `/usr/local/bin/defect-review-all.sh` (chmod +x):
 set -uo pipefail
 
 : "${WIKI_INDEX_ROOT:?set WIKI_INDEX_ROOT to the parent dir of the content checkouts}"
+: "${DOMAIN_EXPERT_REGISTRY:?set DOMAIN_EXPERT_REGISTRY to the registry.yaml path}"
 export WIKI_INDEX_ROOT
 
 log() { printf '%s defect-review: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*"; }
+
+# Registry key for a checkout (the qmd collection prefix, e.g. cid). The
+# registry is the content service's single source of truth for key -> root.
+prefix_for() {  # prefix_for <checkout-dir>
+  python3 - "$1" <<'PY'
+import sys, pathlib, os, yaml
+target = pathlib.Path(sys.argv[1]).resolve()
+reg = yaml.safe_load(open(os.environ["DOMAIN_EXPERT_REGISTRY"])) or {}
+for w in reg.get("wikis") or []:
+    if pathlib.Path(w["root"]).expanduser().resolve() == target:
+        print(w["key"])
+        break
+PY
+}
 
 rc=0
 for d in "$WIKI_INDEX_ROOT"/*/; do
@@ -69,8 +86,11 @@ for d in "$WIKI_INDEX_ROOT"/*/; do
   # Cheap enabled gate — the skill re-checks, this just skips the claude spawn.
   grep -qE '^\s*enabled:\s*true' <(sed -n '/^defect_review:/,/^[^[:space:]]/p' "$d/wiki.config.yaml") || {
     log "skip $(basename "$d") (defect_review not enabled)"; continue; }
-  log "reviewing $(basename "$d")"
-  ( cd "$d" && claude -p "/wiki-defect-review --auto" ) || {
+  prefix=$(prefix_for "$d")
+  [[ -n "$prefix" ]] || {
+    log "ERROR: $(basename "$d") enabled but not in registry $DOMAIN_EXPERT_REGISTRY"; rc=1; continue; }
+  log "reviewing $(basename "$d") (qmd prefix: $prefix)"
+  ( cd "$d" && WIKI_QMD_PREFIX="$prefix" claude -p "/wiki-defect-review --auto" ) || {
     log "ERROR: review failed in $(basename "$d")"; rc=1; }
 done
 exit $rc
@@ -79,7 +99,7 @@ exit $rc
 ## Cron
 
 ```
-*/5 * * * * WIKI_INDEX_ROOT=/srv/wikis flock -n /run/defect-review.lock /usr/local/bin/defect-review-all.sh >> /var/log/defect-review.log 2>&1
+*/5 * * * * WIKI_INDEX_ROOT=/srv/wikis DOMAIN_EXPERT_REGISTRY=/etc/domain-expert/registry.yaml flock -n /run/defect-review.lock /usr/local/bin/defect-review-all.sh >> /var/log/defect-review.log 2>&1
 ```
 
 - 5-minute cadence; the 10-minute cool-down is enforced by the scanner

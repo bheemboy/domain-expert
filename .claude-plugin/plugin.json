@@ -1,7 +1,7 @@
 {
   "name": "domain-expert",
   "description": "LLM-maintained wiki for a software project: ingests Jira + code + docs into an interlinked, provenance-tracked markdown wiki. Skills: wiki-init, wiki-queue, wiki-ingest, wiki-lint, wiki-story, wiki-epic, wiki-doc-author, wiki-doc-review, wiki-defect-review.",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "author": {
     "name": "Sunil Rehman"
   },

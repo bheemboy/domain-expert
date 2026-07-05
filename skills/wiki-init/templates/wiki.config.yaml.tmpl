@@ -44,15 +44,13 @@ lint:
 # `post` comments directly. Use your project's real issue-type/status names
 # in candidate_jql (Defect vs Bug varies per project). The project key, the
 # 10-minute cool-down, and the bot marker are supplied by code — never put
-# them in the JQL. `qmd_collection_prefix` is only for servers with a unified
-# qmd index (the app-registry key, e.g. `cid` — NOT the Jira project key).
+# them in the JQL.
 # defect_review:
 #   enabled: true
 #   mode: draft                  # draft | post
 #   notify_user: you@example.com
 #   candidate_jql: 'issuetype = Defect AND status in ("New", "Open")'
 #   max_question_rounds: 3
-#   qmd_collection_prefix: ""    # server/unified-index only; leave "" on dev
 
 # Optional. Tunes how the synth phase batches and routes work. Everything here is
 # commented out: the pipeline ships with these exact defaults baked in, so you only
