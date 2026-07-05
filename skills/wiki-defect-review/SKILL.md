@@ -83,9 +83,13 @@ lines (stderr) into the run log — they are the audit trail.
    ```bash
    python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --attachments-ext png,jpg,jpeg,gif --attachments-dir /tmp/defect-review-<KEY>
    ```
-   Read every downloaded file with the Read tool. Note video attachments in
-   the manifest — they are NOT viewable; the comment must disclose that.
-   PDFs/logs: read if small (≤ ~200 KB), otherwise note from the manifest.
+   Read every downloaded file with the Read tool.
+   Text logs (`.log`, `.txt`) and PDFs: when the manifest shows one at
+   ≤ ~200 KB, download it the same way (adjust `--attachments-ext`) and
+   read it; note bigger ones from the manifest only.
+   Videos and archives (`.zip`, `.7z`, `.tar.*`): NOT viewable — never
+   download or unpack; the comment must disclose each one it could not
+   examine.
 3. **Wiki grounding:** follow the canonical gate in
    `${CLAUDE_PLUGIN_ROOT}/prompts/qmd-first-gate.md` (including its unified
    server-index step 4 when `$WIKI_INDEX_ROOT` is set). Search 2–3 key nouns
@@ -93,9 +97,12 @@ lines (stderr) into the run log — they are the audit trail.
    search the raw collection for similar ingested tickets.
 4. **Live duplicate candidates:** recent tickets not yet ingested:
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" --jql "project = <project.key> AND issuetype = Bug AND created >= -30d ORDER BY created DESC"
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" --jql "project = <project.key> AND <issuetype clause> AND created >= -30d ORDER BY created DESC"
    ```
-   Keep it light: key, summary, status per candidate.
+   `<issuetype clause>` = the same issue-type condition used in the config's
+   `candidate_jql` (e.g. `issuetype = Defect`) — never assume `Bug`; issue
+   type names vary per Jira project. Keep it light: key, summary, status
+   per candidate.
 
 ## 4. Run the brain
 

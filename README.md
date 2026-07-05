@@ -134,13 +134,53 @@ The `/wiki-doc-review` command reviews your documented APIs, guides, and other c
 ### Defect review
 
 The `/wiki-defect-review` command acts as a first-line reviewer on newly
-submitted defects: it reads the ticket (screenshots included), asks the
-submitter sharply-scoped clarifying questions or troubleshooting steps when
-the report is thin, judges whether the defect belongs to the product, finds
-duplicates in the wiki and in recent Jira, and delivers a structured verdict.
-It is configured per wiki via a `defect_review:` block in `wiki.config.yaml`
-and runs either interactively or headless on a schedule — see
-`skills/wiki-defect-review/references/server-setup.md` for the server recipe.
+submitted defects: it reads the ticket (screenshots included; small logs and
+PDFs too — videos and zips are disclosed as unviewed), asks the submitter
+sharply-scoped clarifying questions or troubleshooting steps when the report
+is thin, judges whether the defect belongs to the product, finds duplicates
+in the wiki and in recent Jira, and delivers a structured verdict.
+
+**Invocation** (run inside a wiki repo — the repo's `project.key` decides
+which Jira project is reviewed, e.g. cid-wiki → OLAC, ts-wiki → CDS2ASV):
+
+| Form | What happens |
+|------|--------------|
+| `/wiki-defect-review OLAC-1234` | Interactive spot review of one ticket. Shows the proposed comment plus the full analysis in conversation. Never emails, posts, or writes state on its own. |
+| `/wiki-defect-review` + pasted ticket text | Same interactive review over pasted content — no Jira fetch, analysis only. |
+| `/wiki-defect-review --auto` | Headless sweep: scans for settled unreviewed tickets (10-min cool-down, skips tickets where the bot spoke last or a draft email is pending), reviews each, and **delivers** per the configured `mode`. |
+| `/wiki-defect-review --auto --dry-run` | Same scan and reviews, but prints every would-deliver decision (key, comment kind, comment text) instead of delivering. Writes no state. Run this first on any new setup. |
+
+**Delivery mode is configuration, not a flag** — the trust switch lives in
+`wiki.config.yaml` so a cron line can't typo it:
+
+```yaml
+defect_review:
+  enabled: true                # --auto gate; interactive works regardless
+  mode: draft                  # draft = notify email to you, paste to post
+                               # post  = comment directly on the ticket
+  notify_user: you@example.com
+  candidate_jql: 'issuetype = Defect AND status in ("New", "Open")'
+  max_question_rounds: 3       # ask-comment rounds before a forced verdict
+```
+
+Use your project's real issue-type and status names in `candidate_jql`
+(issue types vary per Jira project — `Defect`, `Bug`, …). The project key,
+the 10-minute cool-down, and the bot marker are supplied by code and never
+belong in the JQL.
+
+**Rollout ladder** — earn trust one rung at a time:
+
+1. **Interactive spot reviews** on a few real tickets (a thin report, a
+   duplicate, an out-of-scope one) to tune expectations — dev machine.
+2. **`--auto --dry-run`** — read every decision the bot would have made.
+3. **`--auto` with `mode: draft`** — the bot emails you each proposed
+   comment via Jira's notify API (invisible on the ticket); you paste the
+   good ones. The pasted marker is what tells the bot the ticket is handled.
+4. **Flip to `mode: post`** once the drafts are consistently paste-worthy.
+
+Headless scheduling, server prerequisites (permissions for `claude -p`,
+shared content checkouts, unified qmd index), and the cron wrapper live in
+`skills/wiki-defect-review/references/server-setup.md`.
 
 ### Ignore filtering
 

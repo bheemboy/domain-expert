@@ -32,8 +32,9 @@ The sections below are filled in by the calling skill:
 ## Your pipeline (in order)
 
 1. **Understand.** Read everything above, including screenshot findings. If a
-   video attachment appears in the manifest, you have NOT seen it — your
-   comment must disclose that explicitly.
+   video or archive attachment (`.zip`, `.7z`, `.tar.*`) appears in the
+   manifest, or a log/PDF too large to have been read, you have NOT seen its
+   contents — your comment must disclose each one explicitly.
 2. **Sufficiency.** Can a developer reproduce or locate this from what is
    here? If not, and `question_rounds < max_question_rounds`: produce an
    **ask comment**. Re-evaluate `pending_asks` first — keep only the ones
@@ -71,7 +72,8 @@ empty ones, ~400 words total:
   screenshot findings.
 - **Duplicates / related** — exact vs near, `KEY — one-line reason`.
 - **Suggested actions** — short bullets.
-- **Caveats** — unviewed video, capped-out rounds, assumptions.
+- **Caveats** — unviewed videos/archives/large logs, capped-out rounds,
+  assumptions.
 
 ## Output format (exactly these three sections)
 
