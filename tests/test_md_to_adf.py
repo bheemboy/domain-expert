@@ -114,3 +114,32 @@ def test_linkify_skips_code_blocks_and_lists_work():
     pairs = dict(_texts_and_hrefs(doc))
     assert pairs["OLAC-9"] is None
     assert pairs["OLAC-10"] == "https://x.atlassian.net/browse/OLAC-10"
+
+
+def _issue_with_comments():
+    def adf(text):
+        return {"type": "doc", "version": 1, "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": text}]}]}
+    return {"key": "CDS2ASV-1", "fields": {
+        "summary": "s", "issuetype": {"name": "Defect"},
+        "comment": {"comments": [
+            {"author": {"displayName": "Human"}, "created": "2026-07-01T00:00:00",
+             "body": adf("real analysis")},
+            {"author": {"displayName": "Bot"}, "created": "2026-07-02T00:00:00",
+             "body": adf("🤖 Automated defect review —\n\nverdict text")},
+        ]}}}
+
+
+def test_ingest_export_omits_bot_comments():
+    md = jira_utils.build_issue_md(_issue_with_comments(), "")
+    assert "real analysis" in md
+    assert "verdict text" not in md
+    assert "[automated review comment omitted from ingest]" in md
+    assert "**Bot**" in md  # thread flow preserved
+
+
+def test_print_md_keeps_bot_comments():
+    md = jira_utils.build_issue_md(_issue_with_comments(), "",
+                                   include_bot_comments=True)
+    assert "verdict text" in md
+    assert "omitted from ingest" not in md

@@ -586,6 +586,30 @@ def format_comment(comment: dict) -> str:
     return f"**{author}** _{created}_\n\n{body}"
 
 
+def _comment_is_marked(comment: dict, marker: str) -> bool:
+    return adf_to_md(comment.get("body")).lstrip().startswith(marker)
+
+
+def format_comments(comments: list, include_bot_comments: bool) -> str:
+    """Render a ticket's comment thread. By default the reviewer bot's own
+    marker comments are reduced to an omission stub: ingest must not feed the
+    bot's generated hypotheses back into the wiki it grounds itself in (a
+    wrong assessment would launder itself into ground truth). The review
+    skill's --print-md path opts in to the full thread — the brain has to see
+    what it already said."""
+    marker = _config.defect_review_config()["marker"]
+    parts = []
+    for c in comments:
+        if not include_bot_comments and marker and _comment_is_marked(c, marker):
+            author = (c.get("author") or {}).get("displayName", "Unknown")
+            created = c.get("created", "")[:10]
+            parts.append(f"**{author}** _{created}_\n\n"
+                         "_[automated review comment omitted from ingest]_")
+        else:
+            parts.append(format_comment(c))
+    return "\n\n---\n\n".join(parts)
+
+
 def format_fix_versions(fix_versions: list) -> str:
     names = [v.get("name", "") for v in fix_versions if v.get("name")]
     return ", ".join(names) if names else "—"
@@ -729,7 +753,8 @@ def fetch_issues(jql: str, epic_link_field: str = "") -> list:
     return issues
 
 
-def build_issue_md(issue: dict, epic_link_field: str) -> str:
+def build_issue_md(issue: dict, epic_link_field: str,
+                   include_bot_comments: bool = False) -> str:
     f = issue.get("fields") or {}
     key = issue.get("key", "")
     issue_type = (f.get("issuetype") or {}).get("name", "Unknown")
@@ -745,7 +770,7 @@ def build_issue_md(issue: dict, epic_link_field: str) -> str:
     links_md = format_links(f.get("issuelinks") or [], issue_type)
     attachments_md = format_attachments(f.get("attachment") or [], key)
     comments = (f.get("comment") or {}).get("comments", [])
-    comments_md = "\n\n---\n\n".join(format_comment(c) for c in comments)
+    comments_md = format_comments(comments, include_bot_comments)
     lines = [
         f"# {key} — {summary}",
         "",
@@ -847,13 +872,14 @@ def export_content_equivalent(a: str, b: str) -> bool:
     return get_substantive_content(a) == get_substantive_content(b)
 
 
-def _rendered_md_for(key: str) -> str:
+def _rendered_md_for(key: str, include_bot_comments: bool = False) -> str:
     """Fetch one issue by KEY and render it to export-equivalent markdown."""
     epic_link_field = resolve_epic_link_field()
     issues = fetch_issues(f"key = {key}", epic_link_field)
     if not issues:
         raise SystemExit(f"{key}: not found or not accessible")
-    return build_issue_md(issues[0], epic_link_field)
+    return build_issue_md(issues[0], epic_link_field,
+                          include_bot_comments=include_bot_comments)
 
 
 def stamp_digest_hash(key: str, digest_path: Path) -> None:
@@ -897,7 +923,7 @@ def main():
     parser.add_argument("--list-attachments", action="store_true", help="List each issue's attachments without downloading.")
     parser.add_argument("--attachments-ext", type=str, help="Comma-separated extensions to limit attachment downloads (e.g. png,pdf).")
     parser.add_argument("--force", action="store_true", help="Re-download attachments even if the local file already exists.")
-    parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its export-equivalent markdown to stdout (writes no file).")
+    parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its markdown to stdout (writes no file; unlike the ingest export, includes automated-review comments).")
     parser.add_argument("--stamp-hash", action="store_true", help="Compute content_hash for KEY and write it into raw/imports/jira/<KEY>.md.")
     parser.add_argument("--attachments-dir", type=str, help="Directory to download attachments into (overrides the default assets root).")
     parser.add_argument("--notify", action="store_true", help="Send a Jira notify email about each KEY (requires --subject, --body-file, --to). Writes nothing to the ticket.")
@@ -914,7 +940,8 @@ def main():
     if args.print_md:
         require_credentials()
         for key in args.issue_keys:
-            sys.stdout.write(_rendered_md_for(key))
+            # Full thread: the review brain must see its own prior comments.
+            sys.stdout.write(_rendered_md_for(key, include_bot_comments=True))
         return
     if args.stamp_hash:
         require_credentials()
