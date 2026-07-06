@@ -5,6 +5,9 @@ project:
 
 jira:
   base_url: {{JIRA_BASE_URL}}
+  # Only for SCOPED API tokens (they authenticate solely via the gateway;
+  # cloudId from https://<site>.atlassian.net/_edge/tenant_info):
+  # api_base_url: https://api.atlassian.com/ex/jira/<cloudId>
   jql: |
     {{JIRA_JQL}}
 

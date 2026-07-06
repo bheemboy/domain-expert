@@ -70,6 +70,15 @@ def jira_base_url() -> str:
     return load()["jira"]["base_url"]
 
 
+def jira_api_base_url() -> str:
+    """REST endpoint base. Scoped API tokens only authenticate against the
+    api.atlassian.com gateway, so set jira.api_base_url to
+    https://api.atlassian.com/ex/jira/<cloudId> when using one; unscoped
+    tokens keep using base_url (the site URL, also used for /browse links)."""
+    jira = load()["jira"]
+    return jira.get("api_base_url") or jira["base_url"]
+
+
 def jira_jql() -> str:
     return load()["jira"]["jql"].strip()
 

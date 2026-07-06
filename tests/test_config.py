@@ -38,6 +38,20 @@ def test_jira_values(tmp_path, monkeypatch):
     assert config.jira_jql() == "project = TESTPROJ AND status = Done"
 
 
+def test_jira_api_base_url_defaults_to_base_url(tmp_path, monkeypatch):
+    _write(tmp_path, monkeypatch)
+    assert config.jira_api_base_url() == "https://example.atlassian.net"
+
+
+def test_jira_api_base_url_override(tmp_path, monkeypatch):
+    cfg = _write(tmp_path, monkeypatch)
+    cfg.write_text(cfg.read_text().replace(
+        "jira:\n",
+        "jira:\n  api_base_url: https://api.atlassian.com/ex/jira/abc123\n",
+    ))
+    assert config.jira_api_base_url() == "https://api.atlassian.com/ex/jira/abc123"
+
+
 def test_source_repos_expanded(tmp_path, monkeypatch):
     _write(tmp_path, monkeypatch)
     repos = config.source_repos()

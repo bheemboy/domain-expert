@@ -18,7 +18,10 @@ import config as _config
 #     export JIRA_EMAIL=you@example.com
 #     export JIRA_TOKEN=<api-token>
 # Env var still wins (handy for one-off overrides); otherwise read from wiki.config.yaml.
+# JIRA_BASE_URL is the site URL (human /browse links); JIRA_API_BASE_URL is where
+# REST calls go — differs only for scoped tokens (api.atlassian.com/ex/jira/<cloudId>).
 JIRA_BASE_URL = os.getenv("JIRA_BASE_URL") or _config.jira_base_url()
+JIRA_API_BASE_URL = os.getenv("JIRA_API_BASE_URL") or _config.jira_api_base_url()
 
 CREDS_FILE = _config.config_dir() / "jira.token"
 
@@ -412,7 +415,7 @@ def resolve_account_id(user: str) -> str:
     through untouched; resolve an email via user search."""
     if "@" not in user:
         return user
-    url = f"{JIRA_BASE_URL}/rest/api/3/user/search"
+    url = f"{JIRA_API_BASE_URL}/rest/api/3/user/search"
     resp = requests.get(url, params={"query": user},
                         headers=get_headers(), auth=get_auth())
     resp.raise_for_status()
@@ -434,7 +437,7 @@ def notify_issue(key: str, subject: str, body_text: str, to_user: str) -> None:
     """Email `to_user` about issue `key` via Jira's notify API. Leaves no trace
     on the ticket."""
     payload = build_notify_payload(subject, body_text, resolve_account_id(to_user))
-    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{key}/notify"
+    url = f"{JIRA_API_BASE_URL}/rest/api/3/issue/{key}/notify"
     resp = requests.post(url, headers=get_headers(), auth=get_auth(), json=payload)
     if resp.status_code >= 300:
         raise SystemExit(
@@ -444,7 +447,7 @@ def notify_issue(key: str, subject: str, body_text: str, to_user: str) -> None:
 
 def post_comment(key: str, markdown_body: str) -> None:
     """Post `markdown_body` (converted to ADF) as a comment on `key`."""
-    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{key}/comment"
+    url = f"{JIRA_API_BASE_URL}/rest/api/3/issue/{key}/comment"
     resp = requests.post(url, headers=get_headers(), auth=get_auth(),
                          json={"body": md_to_adf(markdown_body)})
     if resp.status_code >= 300:
@@ -465,7 +468,7 @@ _FIELD_CACHE = None
 def get_all_fields() -> list:
     global _FIELD_CACHE
     if _FIELD_CACHE is None:
-        url = f"{JIRA_BASE_URL}/rest/api/3/field"
+        url = f"{JIRA_API_BASE_URL}/rest/api/3/field"
         resp = requests.get(url, headers=get_headers(), auth=get_auth())
         resp.raise_for_status()
         _FIELD_CACHE = resp.json()
@@ -620,7 +623,14 @@ def download_attachments(
             print(f"  exists     : {fname}")
             written.append(dest)
             continue
-        content_url = att.get("content", "")
+        # Rebuild the download URL from the attachment id: the payload's
+        # `content` URL points at the site, which scoped tokens can't
+        # authenticate against (only the api.atlassian.com gateway).
+        att_id = att.get("id", "")
+        content_url = (
+            f"{JIRA_API_BASE_URL}/rest/api/3/attachment/content/{att_id}"
+            if att_id else att.get("content", "")
+        )
         if not content_url:
             print(f"  no url     : {fname}")
             continue
@@ -657,7 +667,7 @@ def fetch_issues(jql: str, epic_link_field: str = "") -> list:
     if epic_link_field and epic_link_field not in fields:
         fields.append(epic_link_field)
 
-    url = f"{JIRA_BASE_URL}/rest/api/3/search/jql"
+    url = f"{JIRA_API_BASE_URL}/rest/api/3/search/jql"
     issues = []
     next_token = None
     while True:
