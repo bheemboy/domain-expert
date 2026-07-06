@@ -71,3 +71,27 @@ def prune(keep: set) -> None:
     pruned = {k: v for k, v in data.items() if k in keep}
     if pruned != data:
         _save(pruned)
+
+
+if __name__ == "__main__":
+    # CLI so headless runs can allowlist per-script commands instead of
+    # arbitrary `python -c` code.
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Per-ticket review state.")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    p_rec = sub.add_parser("record", help="Overwrite the entry for KEY.")
+    p_rec.add_argument("key")
+    p_rec.add_argument("--updated", default=None,
+                       help="Ticket `updated` value the delivery covered.")
+    p_rec.add_argument("--rounds", type=int, default=0,
+                       help="Clarifying-question rounds so far.")
+    p_rec.add_argument("--pending-asks", default="[]",
+                       help="JSON list of deferred asks.")
+    p_get = sub.add_parser("get", help="Print the entry for KEY (defaults merged).")
+    p_get.add_argument("key")
+    args = parser.parse_args()
+    if args.cmd == "record":
+        record(args.key, args.updated, args.rounds, json.loads(args.pending_asks))
+    else:
+        print(json.dumps(get(args.key)))

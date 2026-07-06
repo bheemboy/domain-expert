@@ -39,7 +39,7 @@ Missing either → **stop**: "This skill requires a domain-expert wiki repo
 Read the config gate:
 
 ```bash
-python -c "import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/scripts'); import config; import json; print(json.dumps(config.defect_review_config()))"
+python "${CLAUDE_PLUGIN_ROOT}/scripts/defect_review_config.py"
 ```
 
 In `--auto` mode, `enabled: false` → print "defect_review disabled for this
@@ -183,11 +183,10 @@ non-zero at the end so the wrapper flags the run.
 ## 7. Record state (auto mode only, after successful delivery)
 
 ```bash
-python -c "
-import sys; sys.path.insert(0, '${CLAUDE_PLUGIN_ROOT}/scripts')
-import defect_review_state as s
-s.record('<KEY>', '<updated from the scan JSON>', <question_rounds from STATE>, <pending_asks from STATE>)
-"
+python "${CLAUDE_PLUGIN_ROOT}/scripts/defect_review_state.py" record <KEY> \
+  --updated '<updated from the scan JSON>' \
+  --rounds <question_rounds from STATE> \
+  --pending-asks '<pending_asks from STATE, as a JSON list>'
 ```
 
 `mode: post` note: the marker comment now carries the dedupe; state still
