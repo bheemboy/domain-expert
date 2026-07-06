@@ -347,6 +347,44 @@ def _build_md_list(items: list) -> dict:
     return node
 
 
+def linkify_issue_keys(node, project_key: str, base_url: str):
+    """Make bare <project_key>-<n> references in an ADF tree clickable
+    (link marks to <base_url>/browse/<KEY>). Post-time and mechanical, so it
+    applies however the comment was written. Skips code blocks, code spans,
+    and text that already carries a link. Scoped to the wiki's own project
+    key so key-shaped strings (UTF-8, SHA-256) can never false-match."""
+    if isinstance(node, list):
+        out = []
+        for child in node:
+            r = linkify_issue_keys(child, project_key, base_url)
+            out.extend(r) if isinstance(r, list) else out.append(r)
+        return out
+    if not isinstance(node, dict) or node.get("type") == "codeBlock":
+        return node
+    if node.get("type") == "text":
+        marks = node.get("marks") or []
+        if any(m.get("type") in ("link", "code") for m in marks):
+            return node
+        text = node["text"]
+        pieces, pos = [], 0
+        for m in re.finditer(rf"\b{re.escape(project_key)}-\d+\b", text):
+            if m.start() > pos:
+                pieces.append(_adf_text_node(text[pos:m.start()], marks or None))
+            href = f"{base_url}/browse/{m.group(0)}"
+            pieces.append(_adf_text_node(
+                m.group(0), marks + [{"type": "link", "attrs": {"href": href}}]))
+            pos = m.end()
+        if not pieces:
+            return node
+        if pos < len(text):
+            pieces.append(_adf_text_node(text[pos:], marks or None))
+        return pieces
+    if "content" in node:
+        node = dict(node)
+        node["content"] = linkify_issue_keys(node["content"], project_key, base_url)
+    return node
+
+
 def md_to_adf(md: str) -> dict:
     """Markdown → ADF document for the review-comment subset (see section
     comment). Always returns a valid `doc` node, empty input included."""
@@ -446,10 +484,13 @@ def notify_issue(key: str, subject: str, body_text: str, to_user: str) -> None:
 
 
 def post_comment(key: str, markdown_body: str) -> None:
-    """Post `markdown_body` (converted to ADF) as a comment on `key`."""
+    """Post `markdown_body` (converted to ADF, bare same-project issue keys
+    linkified) as a comment on `key`."""
+    body = linkify_issue_keys(
+        md_to_adf(markdown_body), _config.project_key(), JIRA_BASE_URL)
     url = f"{JIRA_API_BASE_URL}/rest/api/3/issue/{key}/comment"
     resp = requests.post(url, headers=get_headers(), auth=get_auth(),
-                         json={"body": md_to_adf(markdown_body)})
+                         json={"body": body})
     if resp.status_code >= 300:
         raise SystemExit(
             f"comment on {key} failed: HTTP {resp.status_code}: {resp.text[:500]}"

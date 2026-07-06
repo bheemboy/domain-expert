@@ -65,3 +65,52 @@ def _walk_text_nodes(node):
 def test_no_empty_text_nodes_from_empty_constructs():
     doc = jira_utils.md_to_adf("- \n\n```\n```\n\n1. real ask")
     assert all(n["text"] for n in _walk_text_nodes(doc))
+
+
+def _linkify(md: str):
+    return jira_utils.linkify_issue_keys(
+        jira_utils.md_to_adf(md), "OLAC", "https://x.atlassian.net")
+
+
+def _texts_and_hrefs(doc):
+    out = []
+    def walk(n):
+        if isinstance(n, list):
+            [walk(c) for c in n]
+        elif isinstance(n, dict):
+            if n.get("type") == "text":
+                href = next((m["attrs"]["href"] for m in n.get("marks", [])
+                             if m["type"] == "link"), None)
+                out.append((n["text"], href))
+            walk(n.get("content", []))
+    walk(doc)
+    return out
+
+
+def test_linkify_bare_key_in_paragraph():
+    doc = _linkify("matches OLAC-1783 exactly")
+    assert ("OLAC-1783", "https://x.atlassian.net/browse/OLAC-1783") in _texts_and_hrefs(doc)
+    assert ("matches ", None) in _texts_and_hrefs(doc)
+
+
+def test_linkify_keeps_existing_marks():
+    doc = _linkify("see **OLAC-42** now")
+    node = [n for n in doc["content"][0]["content"] if n["text"] == "OLAC-42"][0]
+    types = [m["type"] for m in node["marks"]]
+    assert types == ["strong", "link"]
+
+
+def test_linkify_skips_code_and_links_and_other_projects():
+    doc = _linkify("`OLAC-1` [OLAC-2](https://y.io) CDS2ASV-3 OLAC-4")
+    pairs = dict(_texts_and_hrefs(doc))
+    assert pairs["OLAC-1"] is None                      # code span untouched
+    assert pairs["OLAC-2"] == "https://y.io"            # existing link kept
+    assert pairs["OLAC-4"] == "https://x.atlassian.net/browse/OLAC-4"
+    assert not any(h and "CDS2ASV" in h for h in pairs.values())  # other project bare
+
+
+def test_linkify_skips_code_blocks_and_lists_work():
+    doc = _linkify("```\nOLAC-9\n```\n\n- fixed by OLAC-10")
+    pairs = dict(_texts_and_hrefs(doc))
+    assert pairs["OLAC-9"] is None
+    assert pairs["OLAC-10"] == "https://x.atlassian.net/browse/OLAC-10"
