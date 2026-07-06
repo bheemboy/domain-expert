@@ -42,7 +42,9 @@ no config → **bootstrap**; config present → **upgrade**.
      placeholders); ensure it stays executable (`chmod +x`).
    Substitute `{{TODAY}}` with the current ISO date.
 3. **Print remaining machine-local prereqs** (do not perform): create
-   `<config_dir>/jira.token` (JIRA_EMAIL/JIRA_TOKEN), `pip install -r` the plugin's
+   `<config_dir>/jira.token`, chmod 600 (start from
+   `${CLAUDE_PLUGIN_ROOT}/skills/wiki-init/templates/jira.token.example`),
+   `pip install -r` the plugin's
    `requirements.txt` (includes docling for layout-aware PDF conversion — heavy,
    ~2 GB with models), install doc converters (`poppler-utils pandoc libreoffice`),
    optional search index — the human runs `./qmd_sync.sh` from the repo root in their
