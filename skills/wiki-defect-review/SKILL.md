@@ -79,9 +79,10 @@ lines (stderr) into the run log — they are the audit trail.
 
 ## 3. Assemble the review input (per ticket)
 
-1. **Render the ticket:**
+1. **Render the ticket** (full thread — you must see your own prior review
+   comments, which the default rendering stubs out for ingest):
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --print-md
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --print-md --include-bot-comments
    ```
 2. **Screenshots:** download image attachments and READ each one — the error
    often lives only there:

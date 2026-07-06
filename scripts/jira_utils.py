@@ -594,9 +594,10 @@ def format_comments(comments: list, include_bot_comments: bool) -> str:
     """Render a ticket's comment thread. By default the reviewer bot's own
     marker comments are reduced to an omission stub: ingest must not feed the
     bot's generated hypotheses back into the wiki it grounds itself in (a
-    wrong assessment would launder itself into ground truth). The review
-    skill's --print-md path opts in to the full thread — the brain has to see
-    what it already said."""
+    wrong assessment would launder itself into ground truth). The
+    defect-review skill opts in to the full thread via
+    `--print-md --include-bot-comments` — the brain has to see what it
+    already said."""
     marker = _config.defect_review_config()["marker"]
     parts = []
     for c in comments:
@@ -923,7 +924,8 @@ def main():
     parser.add_argument("--list-attachments", action="store_true", help="List each issue's attachments without downloading.")
     parser.add_argument("--attachments-ext", type=str, help="Comma-separated extensions to limit attachment downloads (e.g. png,pdf).")
     parser.add_argument("--force", action="store_true", help="Re-download attachments even if the local file already exists.")
-    parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its markdown to stdout (writes no file; unlike the ingest export, includes automated-review comments).")
+    parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its markdown to stdout (writes no file). Automated-review comments are omitted unless --include-bot-comments.")
+    parser.add_argument("--include-bot-comments", action="store_true", help="Render the reviewer bot's marker comments in full instead of an omission stub. The defect-review skill needs this; ingest must not use it.")
     parser.add_argument("--stamp-hash", action="store_true", help="Compute content_hash for KEY and write it into raw/imports/jira/<KEY>.md.")
     parser.add_argument("--attachments-dir", type=str, help="Directory to download attachments into (overrides the default assets root).")
     parser.add_argument("--notify", action="store_true", help="Send a Jira notify email about each KEY (requires --subject, --body-file, --to). Writes nothing to the ticket.")
@@ -940,8 +942,8 @@ def main():
     if args.print_md:
         require_credentials()
         for key in args.issue_keys:
-            # Full thread: the review brain must see its own prior comments.
-            sys.stdout.write(_rendered_md_for(key, include_bot_comments=True))
+            sys.stdout.write(_rendered_md_for(
+                key, include_bot_comments=args.include_bot_comments))
         return
     if args.stamp_hash:
         require_credentials()
