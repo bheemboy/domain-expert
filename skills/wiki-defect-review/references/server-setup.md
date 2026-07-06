@@ -66,9 +66,8 @@ mechanics live in those two READMEs.
    The qmd collection prefix is not a config key — the wrapper derives it
    from the registry and exports `$WIKI_QMD_PREFIX` (see below).
 
-5. Per reviewed wiki: `<config_dir>/jira.token` (chmod 600) — same layout
-   the plugin uses everywhere; start from the plugin's
-   `skills/wiki-init/templates/jira.token.example`.
+5. Per reviewed wiki: `<config_dir>/jira.token` (chmod 600) — two lines,
+   same as on dev: `JIRA_EMAIL=you@example.com` / `JIRA_TOKEN=<api-token>`.
 6. Confirm each wiki's `.gitignore` covers any path the reviewer could
    create inside the checkout (it should create none — state lives in
    `config_dir` — but verify before first run).

@@ -42,8 +42,9 @@ no config → **bootstrap**; config present → **upgrade**.
      placeholders); ensure it stays executable (`chmod +x`).
    Substitute `{{TODAY}}` with the current ISO date.
 3. **Print remaining machine-local prereqs** (do not perform): create
-   `<config_dir>/jira.token`, chmod 600 (start from
-   `${CLAUDE_PLUGIN_ROOT}/skills/wiki-init/templates/jira.token.example`),
+   `<config_dir>/jira.token`, chmod 600, two lines —
+   `JIRA_EMAIL=you@example.com` and `JIRA_TOKEN=<api-token>` (token from
+   https://id.atlassian.com/manage-profile/security/api-tokens);
    `pip install -r` the plugin's
    `requirements.txt` (includes docling for layout-aware PDF conversion — heavy,
    ~2 GB with models), install doc converters (`poppler-utils pandoc libreoffice`),
