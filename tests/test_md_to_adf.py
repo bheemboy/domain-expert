@@ -202,3 +202,24 @@ def test_one_space_indent_drift_stays_flat_consecutive():
     top = doc["content"][0]
     assert top["type"] == "orderedList"
     assert len(top["content"]) == 2
+
+
+def test_reporter_row_rendered_and_content_equivalent():
+    issue = _issue_with_comments()
+    issue["fields"]["reporter"] = {"displayName": "DELAGUILA,LILIANA (Agilent USA)"}
+    md = jira_utils.build_issue_md(issue, "")
+    assert "| **Reporter** | DELAGUILA,LILIANA (Agilent USA) |" in md
+    # The Reporter row is inside the Metadata table, which content-equivalence
+    # strips — exports before/after this feature must hash identical.
+    md_without = jira_utils.build_issue_md(_issue_with_comments(), "")
+    assert jira_utils.export_content_equivalent(md, md_without)
+
+
+def test_reporter_row_dash_when_missing():
+    md = jira_utils.build_issue_md(_issue_with_comments(), "")
+    assert "| **Reporter** | — |" in md
+
+
+def test_fetch_fields_include_reporter():
+    import inspect
+    assert '"reporter"' in inspect.getsource(jira_utils.fetch_issues)

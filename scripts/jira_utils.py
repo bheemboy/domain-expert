@@ -759,6 +759,7 @@ def fetch_issues(jql: str, epic_link_field: str = "") -> list:
         "updated",
         "parent",
         "attachment",
+        "reporter",
     ]
     if epic_link_field and epic_link_field not in fields:
         fields.append(epic_link_field)
@@ -793,6 +794,7 @@ def build_issue_md(issue: dict, epic_link_field: str,
     description = adf_to_md(f.get("description"))
     status_name = (f.get("status") or {}).get("name", "")
     resolution = (f.get("resolution") or {}).get("name", "Unresolved")
+    reporter = (f.get("reporter") or {}).get("displayName", "—") or "—"
     fix_versions = format_fix_versions(f.get("fixVersions") or [])
     epic_link = _epic_ref(f, epic_link_field)
     updated_iso = (f.get("updated") or "").strip()
@@ -816,6 +818,7 @@ def build_issue_md(issue: dict, epic_link_field: str,
         "|-------|-------|",
         f"| **Key** | `{key}` |",
         f"| **Issue Type** | {issue_type} |",
+        f"| **Reporter** | {reporter} |",
         f"| **Status** | {status_name} |",
         f"| **Resolution** | {resolution} |",
         f"| **Fix Version/s** | {fix_versions} |",
