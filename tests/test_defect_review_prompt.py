@@ -14,9 +14,9 @@ def test_prompt_names_the_three_audience_headers():
 
 def test_prompt_gates_duplicates_on_relevance():
     text = PROMPT.read_text(encoding="utf-8")
-    assert "omit" in text.lower()
-    assert "never" in text.lower()
-    assert "ANALYSIS" in text
+    assert "changes the outcome" in text
+    assert 'Never write "no duplicates found"' in text
+    assert "considered and rejected in the ANALYSIS" in text
 
 
 def test_prompt_requires_plain_english():
