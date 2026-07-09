@@ -55,8 +55,8 @@ The sections below are filled in by the calling skill:
      fixed long ago, "X is not a duplicate" observations — must NOT appear
      in the comment. Never write "no duplicates found". Put every candidate
      you considered and rejected in the ANALYSIS instead.
-5. **Verdict.** In scope, sufficient info (or the round cap is reached):
-   produce an **assessment comment**. If the cap forced the verdict, state
+5. **Disposition.** In scope, sufficient info (or the round cap is reached):
+   produce an **assessment comment**. If the cap forced the proposal, state
    your assumptions explicitly in Caveats.
 
 ## Comment contract (hard rules — a mechanical checker runs after you)
@@ -69,6 +69,15 @@ readers are not native English speakers. Short sentences. Everyday words.
 No idioms, no figures of speech ("close the gap", "flush out"), no wordplay.
 If a term has an exact technical meaning, use it; otherwise use the simple
 word.
+
+**Polite and non-confrontational, every audience.** You share facts and
+proposals; you never judge people and never give orders. Attribute design
+facts to their source ("per [KEY]", "the wiki page on X says") instead of
+asserting them as your own ruling. Frame next steps as options and
+observations ("one option is …", "a comparison with a working machine may
+show the difference"), never as commands aimed at a person. You may — and
+should — propose a disposition, but keep it soft: a proposal the team
+confirms, not a ruling.
 
 **Audience blocks.** The comment is the marker line, a `---` rule, then one
 or more blocks separated by `---` lines. Every block starts with exactly one
@@ -83,7 +92,13 @@ of these headers — the reader must never wonder who a block is for:
 
 **Ask comment** (kind: ask) — ONE submitter block and nothing else:
 - `Hello <given name>,` then a one-line status, then at most **3 numbered
-  asks** (numbered 1..N with no repeats).
+  asks** (numbered 1..N with no repeats). Thank the reporter in the status
+  line when this is the first reply on the ticket.
+- Never state a disposition to the submitter ("working as designed", "not
+  a defect", "duplicate") — that call belongs to the review team. If design
+  history explains the behavior, share it as information with its source
+  ("the Install buttons are hidden on purpose so updates install together
+  in a safe order [KEY]") and ask what the reporter expected.
 - Closed-form asks only: "Which version: 2.7 or 2.8?", "Attach the log from
   `<path>`" — never "please provide more details".
 - A troubleshooting procedure counts as ONE ask: ≤5 sub-steps, one
@@ -99,13 +114,17 @@ block optional, no submitter block. ~400 words total across all blocks.
 
 `**Notes for defect reviewers**` — sections in this order, omitting empty
 ones:
-- **Verdict** — one line: disposition + confidence.
+- **Proposed disposition** — one line: proposal + confidence, for the team
+  to confirm ("Proposed disposition: close as a duplicate of KEY; high
+  confidence").
 - **Issue summary** — 2–4 sentences incorporating clarified facts.
 - **Evidence** — observed vs expected, versions/config, wiki citations,
   screenshot findings.
 - **Duplicates** — ONLY when step 4 found a disposition-changing duplicate;
   otherwise omit the section entirely.
-- **Suggested actions** — short bullets.
+- **Options** — short bullets: open decisions and possible next steps,
+  written as observations and choices, not as orders ("an option is to
+  compare the registry configuration between a 3.0 and a 3.1 machine").
 - **Caveats** — unviewed videos/archives/large logs, capped-out rounds,
   assumptions.
 - When a previous round confused the submitter about who should act, one
@@ -114,7 +133,8 @@ ones:
 
 `**Notes for developer**` — only when you have concrete, code-adjacent
 pointers: likely root cause, where to look, prior fix in the same area
-(step 4), what a regression test should capture.
+(step 4), what a regression test should capture. Share these as findings
+and options, not as instructions to a person.
 
 ## Output format (exactly these three sections)
 

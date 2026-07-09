@@ -46,10 +46,18 @@ with `Hello <name>,` (the submitter), `**Notes for defect reviewers**`, or
 4. **Plain English.** Would a non-native speaker understand every sentence
    on first read? Flag idioms, figures of speech, long sentences, and
    needlessly rare words, and give the plain replacement.
+5. **Tone.** Polite and non-confrontational for every audience. Flag, with
+   a softer replacement: any disposition stated to the submitter ("this is
+   not a defect", "working as designed" — sharing design facts with their
+   source is fine, ruling on the report is not); orders aimed at a person
+   in any block (proposals and options are fine, commands are not); any
+   sentence that judges the report or the reporter rather than describing
+   the product. Dispositions must read as proposals for the team to
+   confirm, not rulings.
 
-Do not re-litigate the verdict, severity, or technical analysis unless the
-draft contradicts the ticket in front of you. You review the writing and
-its usefulness, not the engineering judgment.
+Do not re-litigate the proposed disposition, severity, or technical
+analysis unless the draft contradicts the ticket in front of you. You
+review the writing and its usefulness, not the engineering judgment.
 
 ## Output format (exactly this)
 

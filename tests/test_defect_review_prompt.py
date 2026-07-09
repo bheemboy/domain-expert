@@ -58,3 +58,17 @@ def test_critic_prompt_has_pass_calibration():
     text = CRITIC.read_text(encoding="utf-8")
     assert "cosmetic" in text
     assert "does not need to be perfect" in text
+
+
+def test_prompt_requires_polite_nonconfrontational_tone():
+    text = PROMPT.read_text(encoding="utf-8")
+    assert "non-confrontational" in text
+    assert "Thank the reporter" in text
+    assert "Proposed disposition" in text
+    assert "Never state a disposition" in text
+
+
+def test_critic_checks_tone():
+    text = CRITIC.read_text(encoding="utf-8")
+    assert "**Tone.**" in text
+    assert "non-confrontational" in text
