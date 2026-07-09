@@ -60,3 +60,9 @@ or
 `VERDICT: revise`, then a numbered list of specific, minimal edits, each in
 the form: `<block> — <what to change> → <replacement or "delete">`. Never
 rewrite the whole comment; never add new technical claims.
+
+Calibration: `VERDICT: revise` is for edits that protect a reader's time or
+prevent a wrong action. If every edit you can find is cosmetic — a harmless
+transition phrase, a synonym preference, formatting taste — output
+`VERDICT: pass`. A comment does not need to be perfect to pass; it needs to
+be worth reading.

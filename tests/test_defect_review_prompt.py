@@ -52,3 +52,9 @@ def test_critic_prompt_knows_the_ask_contract():
     assert "at most 3" in text
     assert "counts as ONE ask" in text
     assert "report-back" in text
+
+
+def test_critic_prompt_has_pass_calibration():
+    text = CRITIC.read_text(encoding="utf-8")
+    assert "cosmetic" in text
+    assert "does not need to be perfect" in text
