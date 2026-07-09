@@ -34,6 +34,12 @@ with `Hello <name>,` (the submitter), `**Notes for defect reviewers**`, or
    asked — closed-form, one action or one question each, numbered 1..N.
    The block must contain nothing but the greeting, one status line, and
    the asks. Flag anything a busy reader could answer with the wrong thing.
+   Respect the structural contract the draft was written under: at most 3
+   numbered asks are allowed, so two closely related closed-form details
+   may share one ask; a troubleshooting procedure of up to 5 sub-steps
+   counts as ONE ask and must stay bundled; its final report-back sub-step
+   (what to observe, what to send) is required — never ask to remove it.
+   Never propose an edit that would break these limits.
 3. **Addressee clarity.** Could any sentence make a reader believe it is
    addressed to them when it is not (or the reverse)? The submitter must
    never mistake team notes for a request to act.

@@ -45,3 +45,10 @@ def test_critic_prompt_judges_value_not_justification():
     assert "not a duplicate" in text      # the named anti-pattern
     assert "differently" in text          # the value test
     assert "idiom" in text                # plain-English re-check
+
+
+def test_critic_prompt_knows_the_ask_contract():
+    text = CRITIC.read_text(encoding="utf-8")
+    assert "at most 3" in text
+    assert "counts as ONE ask" in text
+    assert "report-back" in text
