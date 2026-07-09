@@ -3,14 +3,17 @@
 The LLM drafts; this module verifies. Prompts drift, so budgets and structure
 are never left to the prompt alone. Two kinds:
 
-  ask        — submitter-facing: ≤3 numbered asks; ≤1 procedure of ≤5 sub-steps
-               whose last step is a report-back line; ~150 words (~300 with a
-               procedure).
-  assessment — review-team-facing: ~400 words, organized sections.
+  ask        — submitter-facing: ONE block greeting the submitter; ≤3 numbered
+               asks (contiguous 1..N); ≤1 procedure of ≤5 sub-steps whose last
+               step is a report-back line; ~150 words (~300 with a procedure).
+  assessment — team-facing: reviewers block first, developer block optional;
+               ~400 words over the whole comment.
 
-Word budgets carry 10% grace: the ~150/300/400 budgets are targets, the hard
-ceilings here are target × 1.1. The marker is enforced mechanically too:
-every delivered comment starts with the configured marker string.
+Structure: marker line, a `---` rule, then audience blocks separated by `---`.
+Each block opens with one of: `Hello <name>,` / `**Notes for defect
+reviewers**` / `**Notes for developer**`. Only structure is checked here —
+value, relevance, and plain-English judgment belong to the critic pass.
+Word budgets carry 10% grace (ceiling = target × 1.1).
 """
 
 import argparse
@@ -25,9 +28,62 @@ MAX_ASKS = 3
 MAX_PROC_STEPS = 5
 DEFAULT_MARKER = "🤖 Automated defect review"
 
+_RULE_LINE_RE = re.compile(r"^-{3,}\s*$")
+_HELLO_RE = re.compile(r"^Hello\b[^,\n]*,\s*$")
+_REVIEWERS_HEADER = "**Notes for defect reviewers**"
+_DEVELOPER_HEADER = "**Notes for developer**"
+
 _ASK_LINE_RE = re.compile(r"^\d+[.)]\s+")
 _SUBSTEP_RE = re.compile(r"^\s{2,}(?:\d+[.)]|-)\s+")
 _REPORT_RE = re.compile(r"(?i)\b(report|attach|send|reply|tell|paste)\b")
+
+
+def _split_blocks(text: str, marker: str):
+    """(violations, blocks) — strip the marker line and its rule, then split
+    the body on `---` lines. Each block is the text between rules."""
+    violations = []
+    lines = text.split("\n")
+    idx = 0
+    while idx < len(lines) and not lines[idx].strip():
+        idx += 1
+    if idx >= len(lines) or not lines[idx].lstrip().startswith(marker):
+        violations.append("marker: comment must start with the bot marker line")
+    else:
+        idx += 1
+        while idx < len(lines) and not lines[idx].strip():
+            idx += 1
+        if idx >= len(lines) or not _RULE_LINE_RE.match(lines[idx].strip()):
+            violations.append("rule: the marker line must be followed by a --- rule")
+        else:
+            idx += 1
+    blocks, current = [], []
+    for line in lines[idx:]:
+        if _RULE_LINE_RE.match(line.strip()):
+            blocks.append("\n".join(current))
+            current = []
+        else:
+            current.append(line)
+    blocks.append("\n".join(current))
+    blocks = [b for b in blocks if b.strip()]
+    return violations, blocks
+
+
+def _block_header(block: str) -> str:
+    for line in block.split("\n"):
+        if line.strip():
+            return line.strip()
+    return ""
+
+
+def _header_kind(header: str) -> str:
+    """'submitter' | 'reviewers' | 'developer' | ''"""
+    if _HELLO_RE.match(header):
+        return "submitter"
+    if header == _REVIEWERS_HEADER:
+        return "reviewers"
+    if header == _DEVELOPER_HEADER:
+        return "developer"
+    return ""
 
 
 def word_count(text: str) -> int:
@@ -60,19 +116,47 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
     """Return violations (empty list = compliant). kind: 'ask' | 'assessment'."""
     if kind not in ("ask", "assessment"):
         raise ValueError(f"kind must be 'ask' or 'assessment', got {kind!r}")
-    violations = []
-    if not text.lstrip().startswith(marker):
-        violations.append("marker: comment must start with the bot marker line")
+    violations, blocks = _split_blocks(text, marker)
+
+    audiences = []
+    for block in blocks:
+        header = _block_header(block)
+        audience = _header_kind(header)
+        if not audience:
+            violations.append(
+                f"audience: block starting {header[:40]!r} must open with "
+                "'Hello <name>,', '**Notes for defect reviewers**', or "
+                "'**Notes for developer**'")
+        audiences.append(audience)
+
     if kind == "assessment":
+        if "submitter" in audiences:
+            violations.append(
+                "kind: an assessment must not contain a 'Hello …,' submitter "
+                "block — submitter requests are ask comments")
+        if audiences and audiences[0] not in ("reviewers", ""):
+            violations.append(
+                "kind: the first assessment block must be "
+                "'**Notes for defect reviewers**'")
         wc = word_count(text)
         if wc > ASSESS_WORDS:
             violations.append(
                 f"words: {wc} exceeds the assessment ceiling {ASSESS_WORDS}")
         return violations
 
+    # kind == "ask"
+    if len(blocks) != 1 or (audiences and audiences[0] not in ("submitter", "")):
+        violations.append(
+            "kind: an ask comment is exactly one block addressed to the "
+            "submitter ('Hello <name>,') — no reviewer/developer blocks")
     asks = split_asks(text)
     if len(asks) > MAX_ASKS:
         violations.append(f"asks: {len(asks)} numbered asks exceed the max {MAX_ASKS}")
+    nums = [int(re.match(r"^(\d+)", a).group(1)) for a in asks]
+    if nums != list(range(1, len(nums) + 1)):
+        violations.append(
+            f"numbering: asks numbered {nums}, expected "
+            f"{list(range(1, len(nums) + 1))} — renumber contiguously from 1")
     procedures = [a for a in asks if len(procedure_steps(a)) >= 2]
     if len(procedures) > 1:
         violations.append(
@@ -94,10 +178,10 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
 
 
 def ensure_marker(text: str, marker: str) -> str:
-    """Prepend the marker line when absent. Idempotent."""
+    """Prepend the marker line + rule when absent. Idempotent."""
     if text.lstrip().startswith(marker):
         return text
-    return f"{marker}\n\n{text}"
+    return f"{marker}\n---\n\n{text}"
 
 
 def main():
