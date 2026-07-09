@@ -342,7 +342,7 @@ def _collect_md_list(lines: list, i: int) -> tuple:
         m2 = _MD_LIST_ITEM_RE.match(lines[j]) if j < len(lines) else None
         if not m2:
             break
-        if len(m2.group("indent")) > top_indent or (m2.group("marker") != "-") == top_ordered:
+        if len(m2.group("indent")) >= top_indent + 2 or (m2.group("marker") != "-") == top_ordered:
             i = j
             continue
         break
@@ -361,7 +361,9 @@ def _build_md_list(items: list) -> dict:
                 "content": [{"type": "paragraph", "content": _md_inline_nodes(text)}]}
         idx += 1
         sub = []
-        while idx < len(items) and items[idx][0] > top_indent:
+        # ≥2 spaces past the parent = nested (same convention as
+        # comment_contract._SUBSTEP_RE); 1 space is drift, not nesting
+        while idx < len(items) and items[idx][0] >= top_indent + 2:
             sub.append(items[idx])
             idx += 1
         if sub:

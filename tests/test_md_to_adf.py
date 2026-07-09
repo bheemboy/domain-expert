@@ -186,3 +186,19 @@ def test_blank_line_before_different_list_kind_stays_separate():
     # two lists, not one merged orderedList.
     doc = jira_utils.md_to_adf("1. one\n2. two\n\n- bullet a\n- bullet b")
     assert [b["type"] for b in doc["content"]] == ["orderedList", "bulletList"]
+
+
+def test_one_space_indent_drift_stays_flat_across_blank_line():
+    doc = jira_utils.md_to_adf("1. one\n\n 2. two")
+    lists = [b for b in doc["content"] if b["type"] == "orderedList"]
+    assert len(lists) == 1
+    assert len(lists[0]["content"]) == 2
+    item_one = lists[0]["content"][0]
+    assert all(c["type"] != "orderedList" for c in item_one["content"])
+
+
+def test_one_space_indent_drift_stays_flat_consecutive():
+    doc = jira_utils.md_to_adf("1. one\n 2. two")
+    top = doc["content"][0]
+    assert top["type"] == "orderedList"
+    assert len(top["content"]) == 2
