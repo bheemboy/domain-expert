@@ -285,6 +285,8 @@ _MD_INLINE_RE = re.compile(
 
 _MD_LIST_ITEM_RE = re.compile(r"^(?P<indent>\s*)(?P<marker>-|\d+[.)])\s+(?P<text>.*)$")
 
+_MD_RULE_RE = re.compile(r"^-{3,}\s*$")
+
 
 def _adf_text_node(text: str, marks: list | None = None) -> dict:
     node = {"type": "text", "text": text}
@@ -316,13 +318,34 @@ def _md_inline_nodes(text: str) -> list:
 
 
 def _collect_md_list(lines: list, i: int) -> tuple:
+    """Collect consecutive list items. A blank-line gap does NOT end the list
+    when the next non-blank line is another item that is nested (deeper
+    indent) or of the same kind (ordered/bullet) at top level — authors put
+    blank lines between numbered asks, and splitting there makes Jira render
+    every item as "1."."""
     items = []
+    top_indent = top_ordered = None
     while i < len(lines):
         m = _MD_LIST_ITEM_RE.match(lines[i])
-        if not m:
+        if m:
+            if top_indent is None:
+                top_indent = len(m.group("indent"))
+                top_ordered = m.group("marker") != "-"
+            items.append((len(m.group("indent")), m.group("marker"), m.group("text")))
+            i += 1
+            continue
+        if lines[i].strip():
             break
-        items.append((len(m.group("indent")), m.group("marker"), m.group("text")))
-        i += 1
+        j = i
+        while j < len(lines) and not lines[j].strip():
+            j += 1
+        m2 = _MD_LIST_ITEM_RE.match(lines[j]) if j < len(lines) else None
+        if not m2:
+            break
+        if len(m2.group("indent")) > top_indent or (m2.group("marker") != "-") == top_ordered:
+            i = j
+            continue
+        break
     return items, i
 
 
@@ -427,6 +450,11 @@ def md_to_adf(md: str) -> dict:
             flush_para()
             blocks.append({"type": "heading", "attrs": {"level": len(m.group(1))},
                            "content": _md_inline_nodes(m.group(2))})
+            i += 1
+            continue
+        if _MD_RULE_RE.match(stripped):
+            flush_para()
+            blocks.append({"type": "rule"})
             i += 1
             continue
         if _MD_LIST_ITEM_RE.match(lines[i]):

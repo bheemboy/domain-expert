@@ -151,3 +151,38 @@ def test_old_marker_bot_comments_still_omitted_after_marker_change():
     md = jira_utils.build_issue_md(_issue_with_comments(), "")
     assert "verdict text" not in md
     assert "[automated review comment omitted from ingest]" in md
+
+
+def test_rule_from_dashes_line():
+    doc = jira_utils.md_to_adf("🤖 Automated defect review\n---\n\nHello Martin,")
+    assert [b["type"] for b in doc["content"]] == ["paragraph", "rule", "paragraph"]
+
+
+def test_rule_roundtrip():
+    back = jira_utils.adf_to_md(jira_utils.md_to_adf("above\n\n---\n\nbelow"))
+    assert "---" in back
+
+
+def test_numbered_list_continues_across_blank_lines():
+    # The exact CDS2ASV-5460 failure shape: blank lines between asks split the
+    # list into three one-item orderedLists, which Jira renders "1. 1. 1.".
+    md = ("1. Is it a fresh install?\n"
+          "\n"
+          "2. Does it fail on every reboot?\n"
+          "\n"
+          "3. After a reboot where it is stopped:\n"
+          "   - Open Event Viewer and note the IDs.\n"
+          "   - Reply with the output.\n")
+    doc = jira_utils.md_to_adf(md)
+    lists = [b for b in doc["content"] if b["type"] == "orderedList"]
+    assert len(lists) == 1
+    assert len(lists[0]["content"]) == 3
+    nested = [c for c in lists[0]["content"][2]["content"] if c["type"] == "bulletList"]
+    assert len(nested) == 1 and len(nested[0]["content"]) == 2
+
+
+def test_blank_line_before_different_list_kind_stays_separate():
+    # An ordered list followed by a blank line and a top-level bullet list is
+    # two lists, not one merged orderedList.
+    doc = jira_utils.md_to_adf("1. one\n2. two\n\n- bullet a\n- bullet b")
+    assert [b["type"] for b in doc["content"]] == ["orderedList", "bulletList"]
