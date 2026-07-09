@@ -527,6 +527,40 @@ def post_comment(key: str, markdown_body: str) -> None:
         )
 
 
+def update_comment(key: str, comment_id: str, markdown_body: str) -> None:
+    """Replace the body of an existing comment on `key` (same ADF conversion
+    and key-linkification as post_comment). Author and created date stay as
+    they were; Jira marks the comment edited."""
+    body = linkify_issue_keys(
+        md_to_adf(markdown_body), _config.project_key(), JIRA_BASE_URL)
+    url = f"{JIRA_API_BASE_URL}/rest/api/3/issue/{key}/comment/{comment_id}"
+    resp = requests.put(url, headers=get_headers(), auth=get_auth(),
+                        json={"body": body})
+    if resp.status_code >= 300:
+        raise SystemExit(
+            f"update comment {comment_id} on {key} failed: "
+            f"HTTP {resp.status_code}: {resp.text[:500]}"
+        )
+
+
+def comment_summaries(issue: dict, marker: str) -> list:
+    """One dict per comment — id, author, created, bot (starts with the
+    review marker), first-line preview — enough to map comment ids to
+    bodies without dumping full comment text."""
+    out = []
+    for c in ((issue.get("fields") or {}).get("comment") or {}).get("comments", []):
+        body = adf_to_md(c.get("body"))
+        first = next((ln.strip() for ln in body.split("\n") if ln.strip()), "")
+        out.append({
+            "id": c.get("id", ""),
+            "author": (c.get("author") or {}).get("displayName", ""),
+            "created": (c.get("created") or "")[:16],
+            "bot": body.lstrip().startswith(marker),
+            "preview": first[:80],
+        })
+    return out
+
+
 # ─────────────────────────────────────────────
 # FIELD RESOLUTION
 # ─────────────────────────────────────────────
@@ -963,6 +997,8 @@ def main():
     parser.add_argument("--attachments-dir", type=str, help="Directory to download attachments into (overrides the default assets root).")
     parser.add_argument("--notify", action="store_true", help="Send a Jira notify email about each KEY (requires --subject, --body-file, --to). Writes nothing to the ticket.")
     parser.add_argument("--post-comment", action="store_true", help="Post --body-file (markdown) as a comment on each KEY.")
+    parser.add_argument("--list-comments", action="store_true", help="Print one JSON line per comment on each KEY: id, author, created, bot (starts with the review marker), first-line preview.")
+    parser.add_argument("--update-comment", metavar="COMMENT_ID", type=str, help="Replace the body of comment COMMENT_ID on one KEY with --body-file (markdown).")
     parser.add_argument("--subject", type=str, help="Subject line for --notify.")
     parser.add_argument("--body-file", type=str, help="Path to the markdown body for --notify / --post-comment.")
     parser.add_argument("--to", dest="to_user", type=str, help="Recipient for --notify: accountId or email.")
@@ -984,6 +1020,26 @@ def main():
         for key in args.issue_keys:
             stamp_digest_hash(key, imports_jira / f"{key}.md")
             print(f"stamped {key}")
+        return
+
+    if args.list_comments:
+        require_credentials()
+        marker = _config.defect_review_config()["marker"]
+        for key in args.issue_keys:
+            issues = fetch_issues(f"key = {key}")
+            if not issues:
+                raise SystemExit(f"{key}: not found")
+            for s in comment_summaries(issues[0], marker):
+                print(json.dumps({"key": key, **s}, ensure_ascii=False))
+        return
+
+    if args.update_comment:
+        require_credentials()
+        if len(args.issue_keys) != 1 or not args.body_file:
+            parser.error("--update-comment requires exactly one KEY and --body-file")
+        body = Path(args.body_file).read_text(encoding="utf-8")
+        update_comment(args.issue_keys[0], args.update_comment, body)
+        print(f"updated comment {args.update_comment} on {args.issue_keys[0]}")
         return
 
     if args.notify or args.post_comment:
