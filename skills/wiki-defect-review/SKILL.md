@@ -115,7 +115,8 @@ lines (stderr) into the run log — they are the audit trail.
 Fill `${CLAUDE_PLUGIN_ROOT}/prompts/defect-review-prompt.md`:
 
 - `## Ticket` — the rendered markdown (step 3.1) + one line per screenshot
-  finding.
+  finding. The metadata table's **Reporter** row is the brain's greeting
+  source for ask comments; do not strip it.
 - `## Wiki grounding` — the retrieved pages (titles + the relevant excerpts).
 - `## Live duplicate candidates` — the step 3.4 list.
 - `## Review state` — `{"question_rounds": <n>, "max_question_rounds": <config>,
@@ -127,7 +128,7 @@ Tell it the marker string from config. Parse the three output sections:
 **Round-cap rule:** when `question_rounds >= max_question_rounds`, instruct
 the brain that kind MUST be `assessment` (verdict with stated assumptions).
 
-## 5. Enforce the contract (mechanical — never skip)
+## 5. Enforce the contract (mechanical, structure only — never skip)
 
 Write the COMMENT section to a temp file, then:
 
@@ -139,6 +140,29 @@ Exit 1 → ONE revision pass: re-run the brain with the violations appended
 ("Revise the comment to fix exactly these violations; change nothing else"),
 re-check. Still failing → deliver anyway but append the violations to the
 ANALYSIS (never block the pipeline on style), and say so in the run log.
+
+## 5b. Critic pass (unbiased — never skip)
+
+Dispatch a **fresh subagent** (Agent tool, `general-purpose`) whose entire
+prompt is `${CLAUDE_PLUGIN_ROOT}/prompts/defect-review-critic-prompt.md`
+with ONLY these sections filled:
+
+- `## Ticket` — the same rendered markdown from step 3.1.
+- `## Draft comment` — the contract-checked draft from step 5.
+
+Give the critic nothing else — no ANALYSIS, no wiki grounding, no duplicate
+candidates, none of your reasoning. Its independence is the point.
+
+Parse the critic's output:
+
+- `VERDICT: pass` → proceed to step 6.
+- `VERDICT: revise` + numbered edits → re-run the brain ONCE ("Apply
+  exactly these edits; change nothing else"), then re-run the step 5
+  checker on the result. Deliver whatever comes out — one critic run, one
+  revision, never a loop, never block the pipeline.
+
+Either way, append the critic's verdict and edits to the ANALYSIS under a
+`Critic:` heading — it is part of the audit trail (email body, run log).
 
 ## 6. Deliver
 
