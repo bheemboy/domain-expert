@@ -29,7 +29,7 @@ def test_defaults_when_block_absent(tmp_path, monkeypatch):
     assert cfg["notify_user"] == ""
     assert cfg["candidate_jql"] == ""
     assert cfg["max_question_rounds"] == 3
-    assert cfg["marker"] == "🤖 Automated defect review —"
+    assert cfg["marker"] == "🤖 Automated defect review"
     assert cfg["also_notify"] is False
     assert "qmd_collection_prefix" not in cfg  # env concern ($WIKI_QMD_PREFIX), never config
 
@@ -50,7 +50,7 @@ def test_overrides_merge_over_defaults(tmp_path, monkeypatch):
     assert cfg["candidate_jql"] == 'issuetype = Bug AND status in ("New", "Open")'
     assert cfg["max_question_rounds"] == 2
     # untouched keys keep defaults
-    assert cfg["marker"] == "🤖 Automated defect review —"
+    assert cfg["marker"] == "🤖 Automated defect review"
     assert cfg["also_notify"] is False
 
 

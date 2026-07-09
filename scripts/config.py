@@ -200,7 +200,12 @@ _DEFECT_REVIEW_DEFAULTS = {
     "notify_user": "",
     "candidate_jql": "",
     "max_question_rounds": 3,
-    "marker": "🤖 Automated defect review —",
+    # Marker contract: every delivered comment starts with this line. Detection
+    # everywhere is startswith(marker), and already-posted comments are never
+    # edited — so any future change MUST keep this a prefix of every marker
+    # ever posted (or ship a migration), else reviewed tickets re-trigger.
+    # History: "🤖 Automated defect review —" (≤0.15.x) → current (prefix).
+    "marker": "🤖 Automated defect review",
     "also_notify": False,
 }
 

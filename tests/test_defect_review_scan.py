@@ -37,6 +37,25 @@ def _comment(text):
 
 NOW = datetime(2026, 7, 4, 9, 30, tzinfo=timezone.utc)
 MARKER = "🤖 Automated defect review —"
+NEW_MARKER = "🤖 Automated defect review"
+
+
+def test_old_marker_comments_still_skip_with_new_marker(tmp_path, monkeypatch):
+    """No-retrigger guarantee: tickets reviewed under the old marker must
+    stay skipped after the marker change (spec §2, no-retrigger)."""
+    _cfg(tmp_path, monkeypatch)
+    issue = _issue(comments=[_comment("user words"),
+                             _comment(f"{MARKER} need details")])  # OLD marker
+    entry = {"emailed_for_updated": None, "question_rounds": 0, "pending_asks": []}
+    assert scan.skip_reason(issue, NEW_MARKER, entry, NOW) == "bot-spoke-last"
+
+
+def test_new_default_marker_is_prefix_of_old(tmp_path, monkeypatch):
+    _cfg(tmp_path, monkeypatch)
+    import config as cfg_mod
+    new = cfg_mod.defect_review_config()["marker"]
+    assert new == NEW_MARKER
+    assert MARKER.startswith(new), "marker change broke prefix-compatibility"
 
 
 def test_candidate_jql_wraps_config(tmp_path, monkeypatch):

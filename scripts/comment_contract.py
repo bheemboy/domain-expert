@@ -23,7 +23,7 @@ ASK_PROC_WORDS = 330     # 300 + 10% grace
 ASSESS_WORDS = 440       # 400 + 10% grace
 MAX_ASKS = 3
 MAX_PROC_STEPS = 5
-DEFAULT_MARKER = "🤖 Automated defect review —"
+DEFAULT_MARKER = "🤖 Automated defect review"
 
 _ASK_LINE_RE = re.compile(r"^\d+[.)]\s+")
 _SUBSTEP_RE = re.compile(r"^\s{2,}(?:\d+[.)]|-)\s+")

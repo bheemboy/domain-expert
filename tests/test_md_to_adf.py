@@ -143,3 +143,11 @@ def test_print_md_keeps_bot_comments():
                                    include_bot_comments=True)
     assert "verdict text" in md
     assert "omitted from ingest" not in md
+
+
+def test_old_marker_bot_comments_still_omitted_after_marker_change():
+    """_comment_is_marked must keep stubbing comments posted under the old
+    marker once the default becomes the shorter prefix."""
+    md = jira_utils.build_issue_md(_issue_with_comments(), "")
+    assert "verdict text" not in md
+    assert "[automated review comment omitted from ingest]" in md
