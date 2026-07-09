@@ -57,8 +57,12 @@ def _split_blocks(text: str, marker: str):
         else:
             idx += 1
     blocks, current = [], []
+    in_fence = False
     for line in lines[idx:]:
-        if _RULE_LINE_RE.match(line.strip()):
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+            current.append(line)
+        elif not in_fence and _RULE_LINE_RE.match(line.strip()):
             blocks.append("\n".join(current))
             current = []
         else:
@@ -130,6 +134,10 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
         audiences.append(audience)
 
     if kind == "assessment":
+        if not blocks:
+            violations.append(
+                "kind: an assessment must contain at least a "
+                "'**Notes for defect reviewers**' block")
         if "submitter" in audiences:
             violations.append(
                 "kind: an assessment must not contain a 'Hello …,' submitter "
@@ -178,10 +186,20 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
 
 
 def ensure_marker(text: str, marker: str) -> str:
-    """Prepend the marker line + rule when absent. Idempotent."""
-    if text.lstrip().startswith(marker):
+    """Prepend the marker line + rule when absent; insert the rule when the
+    marker line is present without one. Idempotent."""
+    if not text.lstrip().startswith(marker):
+        return f"{marker}\n---\n\n{text}"
+    lines = text.split("\n")
+    i = 0
+    while not lines[i].strip():
+        i += 1
+    j = i + 1
+    while j < len(lines) and not lines[j].strip():
+        j += 1
+    if j < len(lines) and _RULE_LINE_RE.match(lines[j].strip()):
         return text
-    return f"{marker}\n---\n\n{text}"
+    return "\n".join(lines[:i + 1] + ["---"] + lines[i + 1:])
 
 
 def main():

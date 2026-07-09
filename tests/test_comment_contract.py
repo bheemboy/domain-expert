@@ -136,3 +136,38 @@ def test_non_contiguous_ask_numbering_flagged():
 def test_contiguous_numbering_across_blank_lines_passes():
     text = _ask("Status.\n\n1. First?\n\n2. Second?\n\n3. Third?")
     assert cc.check(text, "ask") == []
+
+
+# ── regression coverage ─────────────────────────────────────────────────
+
+def test_ensure_marker_inserts_missing_rule_line():
+    text = f"{OLD_MARKER}\n\nHello Martin,\n\n1. Which version?"
+    fixed = cc.ensure_marker(text, MARKER)
+    assert not any(v.startswith("rule") for v in cc.check(fixed, "ask"))
+    assert cc.ensure_marker(fixed, MARKER) == fixed  # idempotent
+
+
+def test_empty_assessment_flagged():
+    violations = cc.check(f"{MARKER}\n---\n\n   \n", "assessment")
+    assert any(v.startswith("kind") for v in violations)
+
+
+def test_dashes_inside_code_fence_do_not_split_blocks():
+    text = (f"{MARKER}\n---\n\nHello Martin,\n\nOne thing to check.\n\n"
+            "1. Run this and reply with the output:\n"
+            "```\nget-info\n---\nsection two\n```")
+    violations = cc.check(text, "ask")
+    assert not any(v.startswith(("audience", "kind")) for v in violations)
+
+
+def test_two_procedures_flagged():
+    proc = ("1. First check:\n   1. Open A\n   2. Report the result\n"
+            "2. Second check:\n   1. Open B\n   2. Report the result")
+    violations = cc.check(_ask(f"Status.\n\n{proc}"), "ask")
+    assert any(v.startswith("procedures") for v in violations)
+
+
+def test_check_honors_custom_marker():
+    custom = "[bot-review]"
+    text = f"{custom}\n---\n\nHello Martin,\n\n1. Which version: 2.7 or 2.8?"
+    assert cc.check(text, "ask", marker=custom) == []
