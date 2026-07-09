@@ -29,3 +29,19 @@ def test_prompt_derives_greeting_from_reporter():
     text = PROMPT.read_text(encoding="utf-8")
     assert "Reporter" in text
     assert "Liliana" in text  # the worked example
+
+
+CRITIC = Path(__file__).parent.parent / "prompts" / "defect-review-critic-prompt.md"
+
+
+def test_critic_prompt_exists_with_verdict_contract():
+    text = CRITIC.read_text(encoding="utf-8")
+    assert "VERDICT: pass" in text
+    assert "VERDICT: revise" in text
+
+
+def test_critic_prompt_judges_value_not_justification():
+    text = CRITIC.read_text(encoding="utf-8").lower()
+    assert "not a duplicate" in text      # the named anti-pattern
+    assert "differently" in text          # the value test
+    assert "idiom" in text                # plain-English re-check
