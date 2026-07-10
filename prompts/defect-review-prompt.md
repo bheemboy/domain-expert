@@ -26,7 +26,11 @@ The sections below are filled in by the calling skill:
 ## Review state
 
 <!-- JSON: {"question_rounds": n, "max_question_rounds": m,
-            "pending_asks": [...], "mode": "interactive"|"auto"} -->
+            "pending_asks": [...], "mode": "interactive"|"auto",
+            "prior_disposition_code": null|"<code>",
+            "prior_disposition": null|"<short phrase>"} -->
+<!-- prior_disposition_code null = you have not delivered an assessment on
+     this ticket yet; a code = your prior assessment proposed it. -->
 
 ---
 
@@ -37,9 +41,22 @@ The sections below are filled in by the calling skill:
    manifest, or a log/PDF too large to have been read, you have NOT seen its
    contents — your comment must disclose each one explicitly.
 2. **Sufficiency.** Can a developer reproduce or locate this from what is
-   here? If not, and `question_rounds < max_question_rounds`: produce an
-   **ask comment**. Re-evaluate `pending_asks` first — keep only the ones
+   here? If not: produce an **ask comment**. Ask only when the answer
+   could change the disposition or is needed to reproduce or locate the
+   problem — never nitpick; a question that merely polishes details is not
+   worth a comment. Re-evaluate `pending_asks` first — keep only the ones
    still unanswered and still load-bearing; never replay them verbatim.
+   Address whoever can best answer: the reporter by default, or any thread
+   participant when the question is for them. The round cap
+   (`question_rounds >= max_question_rounds` → kind MUST be assessment)
+   applies only while `prior_disposition_code` is null; once you have
+   delivered an assessment the cap no longer applies — but the
+   consequential-only bar above always does.
+2b. **Revision.** When `prior_disposition_code` is set, the ticket already
+   carries your assessment comment and your new assessment **replaces** it
+   in place — write the full current assessment, not a delta or a
+   changelog. Revise only where the thread gives you something new; do not
+   reshuffle wording that is still correct.
 3. **Scope.** Does this belong to this product? Ground the judgment in the
    wiki's component/boundary pages and cite them. Out of scope → assessment
    comment naming the likely owning area and where to re-file.
@@ -83,17 +100,23 @@ confirms, not a ruling.
 or more blocks separated by `---` lines. Every block starts with exactly one
 of these headers — the reader must never wonder who a block is for:
 
-- `Hello <given name>,` — the submitter. Derive the name from the ticket's
-  **Reporter** metadata row: `DELAGUILA,LILIANA (Agilent USA)` → `Hello
+- `Hello <given name>,` — the addressee (reporter or thread participant).
+  Derive the name from the ticket's **Reporter** metadata row or the
+  comment author line: `DELAGUILA,LILIANA (Agilent USA)` → `Hello
   Liliana,` (given name, friendly-cased). No Reporter row (pasted text) →
   plain `Hello,`.
 - `**Notes for defect reviewers**` — the review team.
 - `**Notes for developer**` — whoever will fix it.
 
-**Ask comment** (kind: ask) — ONE submitter block and nothing else:
+**Ask comment** (kind: ask) — ONE greeting block and nothing else:
 - `Hello <given name>,` then a one-line status, then at most **3 numbered
   asks** (numbered 1..N with no repeats). Thank the reporter in the status
   line when this is the first reply on the ticket.
+- The addressee is whoever can best answer — the reporter by default, or
+  any thread participant when the question is for them (their given name
+  from a comment author, same friendly-casing as the Reporter rule). You
+  may name a person only as the addressee or to attribute a fact they
+  stated ("per Dipak's note"), never to assign work to a third party.
 - Never state a disposition to the submitter ("working as designed", "not
   a defect", "duplicate") — that call belongs to the review team. If design
   history explains the behavior, share it as information with its source
@@ -140,8 +163,10 @@ and options, not as instructions to a person.
 
 ### COMMENT (kind: ask|assessment)
 
-The ready-to-post Jira comment, in markdown, starting with the marker line
-given to you by the skill, then a `---` rule, then the audience blocks.
+The ready-to-post Jira comment body, in markdown: a `---` rule, then the
+audience blocks. Do NOT write the marker line or any type label — the
+skill composes the header (`<marker> — <label>`, plus a freshness line on
+assessments) mechanically; anything you write there is replaced.
 
 ### ANALYSIS
 
@@ -153,5 +178,16 @@ was rejected, and anything you deferred. This is never posted to Jira.
 
 ```json
 {"question_rounds": <rounds INCLUDING this one if kind=ask, else unchanged>,
- "pending_asks": ["<deferred ask summaries, [] when none>"]}
+ "pending_asks": ["<deferred ask summaries, [] when none>"],
+ "disposition_code": <kind=assessment only, else null — exactly one of
+   "accept-for-fix" | "duplicate" | "out-of-scope" | "not-a-defect" |
+   "as-designed" | "needs-info">,
+ "disposition": <kind=assessment only, else null — the proposal as a short
+   display phrase, ≤6 words, naming the KEY for a duplicate, e.g.
+   "Accept for a fix" or "Duplicate of CDS2ASV-1234">}
 ```
+
+The skill compares `disposition_code` against `prior_disposition_code` to
+decide whether a disposition-change notice is posted — pick the code by
+substance, not wording. `needs-info` is the cap-forced assessment whose
+verdict still hangs on missing information.

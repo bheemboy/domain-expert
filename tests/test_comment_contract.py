@@ -91,10 +91,56 @@ def test_old_marker_comment_passes_marker_check():
     assert not any(v.startswith("marker") for v in violations)
 
 
-def test_ensure_marker_inserts_marker_and_rule():
-    fixed = cc.ensure_marker("Hello Martin,\n\n1. Which version?", MARKER)
-    assert fixed.startswith(f"{MARKER}\n---\n\n")
-    assert cc.ensure_marker(fixed, MARKER) == fixed  # idempotent
+def test_ensure_header_inserts_typed_header_and_rule():
+    fixed = cc.ensure_header("Hello Martin,\n\n1. Which version?", MARKER, "ask")
+    assert fixed.startswith(f"{MARKER} — needs more information\n---\n\n")
+    assert cc.ensure_header(fixed, MARKER, "ask") == fixed  # idempotent
+
+
+def test_ensure_header_replaces_freelanced_suffix():
+    text = f"{MARKER} — assessment (updated)\n---\n\n{REVIEWERS}\n\nverdict"
+    fixed = cc.ensure_header(text, MARKER, "assessment")
+    assert fixed.split("\n")[0] == f"{MARKER} — disposition proposal"
+    assert "(updated)" not in fixed
+
+
+def test_ensure_header_stamps_freshness_line_for_assessment():
+    text = f"{REVIEWERS}\n\nverdict"
+    fixed = cc.ensure_header(text, MARKER, "assessment",
+                             updated="2026-07-10T06:07:12.000+0000")
+    lines = fixed.split("\n")
+    assert lines[0] == f"{MARKER} — disposition proposal"
+    assert lines[1] == "_Reflects the ticket as of 2026-07-10 06:07 UTC_"
+    assert lines[2] == "---"
+
+
+def test_ensure_header_replaces_stale_freshness_line():
+    text = f"{REVIEWERS}\n\nverdict"
+    first = cc.ensure_header(text, MARKER, "assessment",
+                             updated="2026-07-09T10:00:00.000+0000")
+    second = cc.ensure_header(first, MARKER, "assessment",
+                              updated="2026-07-10T06:07:12.000+0000")
+    assert "_Reflects the ticket as of 2026-07-10 06:07 UTC_" in second
+    assert "2026-07-09" not in second
+    assert second.count("Reflects the ticket") == 1
+
+
+def test_ensure_header_converts_timestamp_to_utc():
+    fixed = cc.ensure_header(f"{REVIEWERS}\n\nverdict", MARKER, "assessment",
+                             updated="2026-07-10T08:07:12.000+0200")
+    assert "_Reflects the ticket as of 2026-07-10 06:07 UTC_" in fixed
+
+
+def test_check_accepts_typed_header_and_freshness_line():
+    text = (f"{MARKER} — disposition proposal\n"
+            "_Reflects the ticket as of 2026-07-10 06:07 UTC_\n---\n\n"
+            f"{REVIEWERS}\n\nverdict")
+    assert cc.check(text, "assessment") == []
+
+
+def test_check_flags_header_label_mismatch():
+    text = f"{MARKER} — disposition proposal\n---\n\nHello Martin,\n\n1. Which version?"
+    assert any(v.startswith("header") for v in cc.check(text, "ask"))
 
 
 # ── audience blocks ─────────────────────────────────────────────────────
@@ -140,11 +186,11 @@ def test_contiguous_numbering_across_blank_lines_passes():
 
 # ── regression coverage ─────────────────────────────────────────────────
 
-def test_ensure_marker_inserts_missing_rule_line():
+def test_ensure_header_inserts_missing_rule_line():
     text = f"{OLD_MARKER}\n\nHello Martin,\n\n1. Which version?"
-    fixed = cc.ensure_marker(text, MARKER)
+    fixed = cc.ensure_header(text, MARKER, "ask")
     assert not any(v.startswith("rule") for v in cc.check(fixed, "ask"))
-    assert cc.ensure_marker(fixed, MARKER) == fixed  # idempotent
+    assert cc.ensure_header(fixed, MARKER, "ask") == fixed  # idempotent
 
 
 def test_empty_assessment_flagged():

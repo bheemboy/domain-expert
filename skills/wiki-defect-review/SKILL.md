@@ -120,21 +120,33 @@ Fill `${CLAUDE_PLUGIN_ROOT}/prompts/defect-review-prompt.md`:
 - `## Wiki grounding` — the retrieved pages (titles + the relevant excerpts).
 - `## Live duplicate candidates` — the step 3.4 list.
 - `## Review state` — `{"question_rounds": <n>, "max_question_rounds": <config>,
-  "pending_asks": [...], "mode": "interactive"|"auto"}`.
+  "pending_asks": [...], "mode": "interactive"|"auto",
+  "prior_disposition_code": <from the scan JSON, null when absent>,
+  "prior_disposition": <from the scan JSON, null when absent>}`.
 
-Tell it the marker string from config. Parse the three output sections:
-`### COMMENT (kind: …)`, `### ANALYSIS`, `### STATE`.
+Parse the three output sections: `### COMMENT (kind: …)`, `### ANALYSIS`,
+`### STATE`. The brain writes the comment body only — the typed header
+(`<marker> — <label>`) is composed mechanically in step 5.
 
-**Round-cap rule:** when `question_rounds >= max_question_rounds`, instruct
-the brain that kind MUST be `assessment` (verdict with stated assumptions).
+**Round-cap rule:** when `question_rounds >= max_question_rounds` AND
+`prior_disposition_code` is null, instruct the brain that kind MUST be
+`assessment` (verdict with stated assumptions). After an assessment has
+been delivered the cap no longer applies — the brain's consequential-only
+bar governs any further ask.
 
 ## 5. Enforce the contract (mechanical, structure only — never skip)
 
 Write the COMMENT section to a temp file, then:
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/comment_contract.py" /tmp/defect-review-<KEY>-comment.md --kind <kind> --marker "<marker from config>" --fix-marker
+python "${CLAUDE_PLUGIN_ROOT}/scripts/comment_contract.py" /tmp/defect-review-<KEY>-comment.md --kind <kind> --marker "<marker from config>" --fix-marker --updated '<updated from the scan JSON>'
 ```
+
+`--fix-marker` composes the typed header in place — `<marker> — needs more
+information` (ask) or `<marker> — disposition proposal` (assessment) plus
+the freshness line (`_Reflects the ticket as of …_`) from `--updated` —
+replacing anything the brain wrote there. Omit `--updated` for pasted-text
+reviews (no ticket timestamp exists).
 
 Exit 1 → ONE revision pass: re-run the brain with the violations appended
 ("Revise the comment to fix exactly these violations; change nothing else"),
@@ -170,8 +182,10 @@ Either way, append the critic's verdict and edits to the ANALYSIS under a
 email, post, or write state. If the user says to send it, follow the
 config `mode` exactly as below.
 
-**`--auto --dry-run`:** print per ticket: key, kind, would-`notify`/would-`post`,
-the comment text. No delivery, no state writes.
+**`--auto --dry-run`:** print per ticket: key, kind,
+would-`notify`/would-`post`/would-`update` (run `--list-comments` to decide
+post vs update — it is read-only), would-post a disposition-change notice or
+not, and the comment text. No delivery, no state writes.
 
 **`--auto`, `mode: draft`:** email the draft via the notify API:
 
@@ -192,11 +206,33 @@ ANALYSIS (not for posting):
 <the analysis>
 ```
 
-**`--auto`, `mode: post`:** post directly, then optional FYI:
+**`--auto`, `mode: post`:** comments converse; the assessment is one living
+comment, edited in place.
 
-```bash
-python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --post-comment --body-file /tmp/defect-review-<KEY>-comment.md
-```
+- `kind: ask` — post a new comment (a conversation needs a thread):
+  ```bash
+  python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --post-comment --body-file /tmp/defect-review-<KEY>-comment.md
+  ```
+- `kind: assessment` — find the living assessment comment, then update it:
+  ```bash
+  python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --list-comments
+  ```
+  The bot comment whose preview starts with `<marker> — disposition
+  proposal` is the one to edit:
+  ```bash
+  python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --update-comment <id> --body-file /tmp/defect-review-<KEY>-comment.md
+  ```
+  No such comment (first assessment, legacy untyped comment, or a human
+  deleted it) → fall back to `--post-comment` as for an ask.
+- **Disposition-change notice** — comment edits do not notify watchers, so
+  when the STATE `disposition_code` differs from a non-null
+  `prior_disposition_code`, additionally post one comment built
+  mechanically (no brain, no contract/critic pass), exactly:
+  ```
+  <marker> — assessment revised
+  Previous assessment revised. "<prior_disposition>" → "<disposition>"
+  ```
+  Same code, different wording → no notice; silent in-place edit only.
 
 If `also_notify: true`, send the notify email too (same layout, subject
 prefix `[defect-review posted]`).
@@ -211,11 +247,15 @@ non-zero at the end so the wrapper flags the run.
 python "${CLAUDE_PLUGIN_ROOT}/scripts/defect_review_state.py" record <KEY> \
   --updated '<updated from the scan JSON>' \
   --rounds <question_rounds from STATE> \
-  --pending-asks '<pending_asks from STATE, as a JSON list>'
+  --pending-asks '<pending_asks from STATE, as a JSON list>' \
+  --last-human-comment '<last_human_comment from the scan JSON; omit the flag when null>' \
+  --disposition-code '<disposition_code>' --disposition '<disposition>'
 ```
 
-`mode: post` note: the marker comment now carries the dedupe; state still
-records rounds + pending asks.
+Disposition args: from STATE when kind=assessment; when kind=ask, carry the
+scan JSON's prior values forward unchanged (omit both flags when null).
+`last_human_comment` is the post-mode repeat guard — the scanner skips the
+ticket until a newer non-bot comment appears.
 
 ## 8. Report
 
@@ -224,6 +264,8 @@ End every run with a one-line-per-ticket summary:
 ```
 OLAC-7411  ask (round 2/3)   emailed rehman@…      2 pending asks
 OLAC-7423  assessment        posted                dupe of OLAC-7101
+OLAC-7398  assessment        updated in place      disposition unchanged
+OLAC-7401  assessment        updated + notice      accept-for-fix → duplicate
 ```
 
 Server setup (wrapper script, cron, prerequisites, rollout):

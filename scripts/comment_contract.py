@@ -3,13 +3,16 @@
 The LLM drafts; this module verifies. Prompts drift, so budgets and structure
 are never left to the prompt alone. Two kinds:
 
-  ask        — submitter-facing: ONE block greeting the submitter; ≤3 numbered
-               asks (contiguous 1..N); ≤1 procedure of ≤5 sub-steps whose last
-               step is a report-back line; ~150 words (~300 with a procedure).
+  ask        — conversational: ONE block greeting the addressee (reporter or
+               any thread participant); ≤3 numbered asks (contiguous 1..N);
+               ≤1 procedure of ≤5 sub-steps whose last step is a report-back
+               line; ~150 words (~300 with a procedure).
   assessment — team-facing: reviewers block first, developer block optional;
                ~400 words over the whole comment.
 
-Structure: marker line, a `---` rule, then audience blocks separated by `---`.
+Structure: typed header (`<marker> — <label>`, code-composed via
+ensure_header, never LLM-written), an optional freshness line for
+assessments, a `---` rule, then audience blocks separated by `---`.
 Each block opens with one of: `Hello <name>,` / `**Notes for defect
 reviewers**` / `**Notes for developer**`. Only structure is checked here —
 value, relevance, and plain-English judgment belong to the critic pass.
@@ -19,6 +22,7 @@ Word budgets carry 10% grace (ceiling = target × 1.1).
 import argparse
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ASK_WORDS = 165          # 150 + 10% grace
@@ -28,7 +32,17 @@ MAX_ASKS = 3
 MAX_PROC_STEPS = 5
 DEFAULT_MARKER = "🤖 Automated defect review"
 
+# Comment-type labels, appended to the marker as `<marker> — <label>`. The
+# header is code-composed (ensure_header); the LLM never writes it. "revised"
+# is the disposition-flip notice — built by the skill, never checked here.
+LABELS = {
+    "ask": "needs more information",
+    "assessment": "disposition proposal",
+    "revised": "assessment revised",
+}
+
 _RULE_LINE_RE = re.compile(r"^-{3,}\s*$")
+_FRESHNESS_RE = re.compile(r"^_Reflects the ticket as of .+_$")
 _HELLO_RE = re.compile(r"^Hello\b[^,\n]*,\s*$")
 _REVIEWERS_HEADER = "**Notes for defect reviewers**"
 _DEVELOPER_HEADER = "**Notes for developer**"
@@ -38,9 +52,11 @@ _SUBSTEP_RE = re.compile(r"^\s{2,}(?:\d+[.)]|-)\s+")
 _REPORT_RE = re.compile(r"(?i)\b(report|attach|send|reply|tell|paste)\b")
 
 
-def _split_blocks(text: str, marker: str):
-    """(violations, blocks) — strip the marker line and its rule, then split
-    the body on `---` lines. Each block is the text between rules."""
+def _split_blocks(text: str, marker: str, kind: str = ""):
+    """(violations, blocks) — strip the header line (marker + optional label),
+    an optional freshness line, and the rule, then split the body on `---`
+    lines. Each block is the text between rules. A label that contradicts
+    `kind` is a violation; a bare marker (legacy drafts) is tolerated."""
     violations = []
     lines = text.split("\n")
     idx = 0
@@ -49,9 +65,18 @@ def _split_blocks(text: str, marker: str):
     if idx >= len(lines) or not lines[idx].lstrip().startswith(marker):
         violations.append("marker: comment must start with the bot marker line")
     else:
+        label = lines[idx].lstrip()[len(marker):].strip().strip("—–-").strip()
+        if label and kind and label != LABELS[kind]:
+            violations.append(
+                f"header: label {label!r} does not match the comment kind "
+                f"({kind} → {LABELS[kind]!r})")
         idx += 1
         while idx < len(lines) and not lines[idx].strip():
             idx += 1
+        if idx < len(lines) and _FRESHNESS_RE.match(lines[idx].strip()):
+            idx += 1
+            while idx < len(lines) and not lines[idx].strip():
+                idx += 1
         if idx >= len(lines) or not _RULE_LINE_RE.match(lines[idx].strip()):
             violations.append("rule: the marker line must be followed by a --- rule")
         else:
@@ -120,7 +145,7 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
     """Return violations (empty list = compliant). kind: 'ask' | 'assessment'."""
     if kind not in ("ask", "assessment"):
         raise ValueError(f"kind must be 'ask' or 'assessment', got {kind!r}")
-    violations, blocks = _split_blocks(text, marker)
+    violations, blocks = _split_blocks(text, marker, kind)
 
     audiences = []
     for block in blocks:
@@ -185,21 +210,40 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
     return violations
 
 
-def ensure_marker(text: str, marker: str) -> str:
-    """Prepend the marker line + rule when absent; insert the rule when the
-    marker line is present without one. Idempotent."""
-    if not text.lstrip().startswith(marker):
-        return f"{marker}\n---\n\n{text}"
+def _freshness_line(updated: str) -> str:
+    ts = datetime.strptime(updated, "%Y-%m-%dT%H:%M:%S.%f%z")
+    return ("_Reflects the ticket as of "
+            f"{ts.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC_")
+
+
+def ensure_header(text: str, marker: str, kind: str, updated: str = None) -> str:
+    """Compose the code-owned header: `<marker> — <label>` plus, for an
+    assessment with `updated` given, the freshness line, then the `---` rule.
+    Replaces any existing marker line (LLM-freelanced suffixes included) and
+    any stale freshness line. Idempotent."""
+    header = f"{marker} — {LABELS[kind]}"
     lines = text.split("\n")
     i = 0
-    while not lines[i].strip():
+    while i < len(lines) and not lines[i].strip():
         i += 1
-    j = i + 1
-    while j < len(lines) and not lines[j].strip():
-        j += 1
-    if j < len(lines) and _RULE_LINE_RE.match(lines[j].strip()):
-        return text
-    return "\n".join(lines[:i + 1] + ["---"] + lines[i + 1:])
+    body = lines[i:]
+    if body and body[0].lstrip().startswith(marker):
+        body = body[1:]
+        while body and not body[0].strip():
+            body = body[1:]
+        if body and _FRESHNESS_RE.match(body[0].strip()):
+            body = body[1:]
+            while body and not body[0].strip():
+                body = body[1:]
+    out = [header]
+    if kind == "assessment" and updated:
+        out.append(_freshness_line(updated))
+    if body and _RULE_LINE_RE.match(body[0].strip()):
+        out.extend(body)
+    else:
+        out.extend(["---", ""])
+        out.extend(body)
+    return "\n".join(out)
 
 
 def main():
@@ -208,13 +252,17 @@ def main():
     ap.add_argument("--kind", required=True, choices=("ask", "assessment"))
     ap.add_argument("--marker", default=DEFAULT_MARKER)
     ap.add_argument("--fix-marker", action="store_true",
-                    help="Prepend the marker in place when missing, before checking.")
+                    help="Compose the typed header (marker — label, freshness "
+                         "line for assessments) in place, before checking.")
+    ap.add_argument("--updated", default=None,
+                    help="Ticket `updated` ISO timestamp for the assessment "
+                         "freshness line (used with --fix-marker).")
     args = ap.parse_args()
 
     path = Path(args.file)
     text = path.read_text(encoding="utf-8")
     if args.fix_marker:
-        fixed = ensure_marker(text, args.marker)
+        fixed = ensure_header(text, args.marker, args.kind, args.updated)
         if fixed != text:
             path.write_text(fixed, encoding="utf-8")
             text = fixed

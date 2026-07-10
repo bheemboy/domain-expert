@@ -1,3 +1,4 @@
+import json
 import textwrap
 from datetime import datetime, timezone
 
@@ -30,9 +31,14 @@ def _issue(key="OLAC-1", updated="2026-07-04T09:00:00.000+0000", comments=None):
     }}
 
 
-def _comment(text):
-    return {"body": {"type": "doc", "version": 1, "content": [
+def _comment(text, created=None, updated=None):
+    c = {"body": {"type": "doc", "version": 1, "content": [
         {"type": "paragraph", "content": [{"type": "text", "text": text}]}]}}
+    if created:
+        c["created"] = created
+    if updated:
+        c["updated"] = updated
+    return c
 
 
 NOW = datetime(2026, 7, 4, 9, 30, tzinfo=timezone.utc)
@@ -97,3 +103,68 @@ def test_clean_new_ticket_is_reviewable(tmp_path, monkeypatch):
     issue = _issue()
     entry = {"emailed_for_updated": None, "question_rounds": 0, "pending_asks": []}
     assert scan.skip_reason(issue, MARKER, entry, NOW) is None
+
+
+# ── reviewed gate (update-in-place: bot is no longer the last commenter) ──
+
+T1 = "2026-07-03T10:00:00.000+0000"
+T2 = "2026-07-04T08:00:00.000+0000"
+
+
+def test_skip_reviewed_when_no_new_human_comment(tmp_path, monkeypatch):
+    _cfg(tmp_path, monkeypatch)
+    issue = _issue(comments=[_comment(f"{MARKER} asked", created=T1),
+                             _comment("submitter answer", created=T2)])
+    entry = {"question_rounds": 1, "pending_asks": [], "last_human_comment": T2}
+    assert scan.skip_reason(issue, MARKER, entry, NOW) == "reviewed"
+
+
+def test_newer_human_comment_is_reviewable(tmp_path, monkeypatch):
+    _cfg(tmp_path, monkeypatch)
+    issue = _issue(comments=[_comment(f"{MARKER} assessed", created=T1),
+                             _comment("dev finding", created=T2)])
+    entry = {"question_rounds": 0, "pending_asks": [], "last_human_comment": T1}
+    assert scan.skip_reason(issue, MARKER, entry, NOW) is None
+
+
+def test_legacy_entry_unknown_sentinel_forces_review(tmp_path, monkeypatch):
+    _cfg(tmp_path, monkeypatch)
+    issue = _issue(comments=[_comment(f"{MARKER} assessed", created=T1),
+                             _comment("dev finding", created=T2)])
+    entry = {"question_rounds": 0, "pending_asks": [],
+             "last_human_comment": "unknown"}
+    assert scan.skip_reason(issue, MARKER, entry, NOW) is None
+
+
+def test_recorded_null_skips_while_no_human_comments(tmp_path, monkeypatch):
+    _cfg(tmp_path, monkeypatch)
+    issue = _issue(comments=[])
+    entry = {"question_rounds": 0, "pending_asks": [], "last_human_comment": None}
+    assert scan.skip_reason(issue, MARKER, entry, NOW) == "reviewed"
+
+
+def test_newest_human_comment_ignores_bot_comments():
+    issue = _issue(comments=[
+        _comment("user words", created=T1, updated=T1),
+        _comment(f"{MARKER} assessment", created=T2, updated=T2),  # bot edit later
+    ])
+    assert scan.newest_human_comment(issue, MARKER) == T1
+
+
+def test_newest_human_comment_none_without_humans():
+    issue = _issue(comments=[_comment(f"{MARKER} assessment", created=T1)])
+    assert scan.newest_human_comment(issue, MARKER) is None
+
+
+def test_main_emits_state_fields(tmp_path, monkeypatch, capsys):
+    _cfg(tmp_path, monkeypatch)
+    import jira_utils
+    monkeypatch.setattr(jira_utils, "require_credentials", lambda: None)
+    issue = _issue(comments=[_comment("user words", created=T1)])
+    monkeypatch.setattr(jira_utils, "fetch_issues", lambda jql: [issue])
+    monkeypatch.setattr("sys.argv", ["defect_review_scan.py"])
+    scan.main()
+    rec = json.loads(capsys.readouterr().out.strip())
+    assert rec["last_human_comment"] == T1
+    assert rec["disposition_code"] is None
+    assert rec["disposition"] is None

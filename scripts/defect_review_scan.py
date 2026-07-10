@@ -9,7 +9,14 @@ state, and prints one JSON object per reviewable ticket to stdout:
 Skip reasons go to stderr, one line each:
   cool-down      — activity within the last 10 minutes (still settling)
   bot-spoke-last — latest comment starts with the marker (waiting on submitter)
+  reviewed       — no non-bot comment newer than the last review (post mode:
+                   the bot edits its assessment in place, so it is rarely the
+                   last commenter — state carries the dedupe instead)
   email-pending  — draft already emailed for this exact `updated`
+
+The `reviewed` gate compares the newest non-bot comment timestamp against the
+state entry's `last_human_comment`. The state sentinel "unknown" (legacy entry
+that never recorded the field) never matches, forcing one migration re-review.
 
 The 10-minute cool-down is enforced HERE, in code, on the fetched `updated`
 field — not in the JQL. One cool-down-free fetch serves both candidate
@@ -54,6 +61,23 @@ def last_comment_is_marked(issue: dict, marker: str) -> bool:
     return body.lstrip().startswith(marker)
 
 
+def newest_human_comment(issue: dict, marker: str):
+    """Timestamp (raw string) of the newest non-bot comment; None if there is
+    none. Uses each comment's `updated` (fallback `created`), so a human
+    editing their comment re-triggers but a bot post/edit never does."""
+    comments = ((issue.get("fields") or {}).get("comment") or {}).get("comments", [])
+    newest = None
+    for c in comments:
+        if jira_utils.adf_to_md(c.get("body")).lstrip().startswith(marker):
+            continue
+        ts = c.get("updated") or c.get("created")
+        if not ts:
+            continue
+        if newest is None or _parse_updated(ts) > _parse_updated(newest):
+            newest = ts
+    return newest
+
+
 def skip_reason(issue: dict, marker: str, entry: dict, now: datetime):
     """None = reviewable; otherwise the skip reason string."""
     updated = (issue.get("fields") or {}).get("updated") or ""
@@ -61,6 +85,10 @@ def skip_reason(issue: dict, marker: str, entry: dict, now: datetime):
         return "cool-down"
     if last_comment_is_marked(issue, marker):
         return "bot-spoke-last"
+    reviewed_through = entry.get("last_human_comment", "unknown")
+    if reviewed_through != "unknown" and \
+            newest_human_comment(issue, marker) == reviewed_through:
+        return "reviewed"
     if updated and entry.get("emailed_for_updated") == updated:
         return "email-pending"
     return None
@@ -98,6 +126,9 @@ def main():
             "updated": f.get("updated", ""),
             "question_rounds": entry.get("question_rounds", 0),
             "pending_asks": entry.get("pending_asks", []),
+            "last_human_comment": newest_human_comment(issue, cfg["marker"]),
+            "disposition_code": entry.get("disposition_code"),
+            "disposition": entry.get("disposition"),
         }, ensure_ascii=False))
 
 

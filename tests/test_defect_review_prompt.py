@@ -31,6 +31,44 @@ def test_prompt_derives_greeting_from_reporter():
     assert "Liliana" in text  # the worked example
 
 
+def test_prompt_allows_asks_to_any_thread_participant():
+    text = PROMPT.read_text(encoding="utf-8")
+    assert "whoever can best answer" in text
+    assert "any thread participant" in text
+    assert "never to assign work" in text
+
+
+def test_prompt_requires_consequential_asks():
+    text = PROMPT.read_text(encoding="utf-8")
+    assert "could change the disposition" in text
+    assert "never nitpick" in text
+
+
+def test_prompt_scopes_round_cap_to_pre_assessment():
+    text = PROMPT.read_text(encoding="utf-8")
+    assert "prior_disposition_code" in text
+    assert "cap no longer applies" in text
+
+
+def test_prompt_says_skill_owns_the_header():
+    text = PROMPT.read_text(encoding="utf-8")
+    assert "skill composes the header" in text
+
+
+def test_prompt_revision_replaces_prior_assessment():
+    text = PROMPT.read_text(encoding="utf-8")
+    assert "replaces" in text
+    assert "not a delta" in text
+
+
+def test_prompt_state_carries_disposition_code_enum():
+    text = PROMPT.read_text(encoding="utf-8")
+    assert "disposition_code" in text
+    for code in ("accept-for-fix", "duplicate", "out-of-scope",
+                 "not-a-defect", "as-designed", "needs-info"):
+        assert code in text
+
+
 CRITIC = Path(__file__).parent.parent / "prompts" / "defect-review-critic-prompt.md"
 
 
