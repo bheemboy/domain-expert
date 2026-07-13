@@ -1,6 +1,6 @@
 ---
 name: wiki-defect-review
-description: Review a newly submitted Jira defect like a human reviewer — clarify, suggest troubleshooting, judge scope, find duplicates, and summarize with actions — grounded in the wiki. Use for a single ticket (key or pasted text) or headless polling (--auto). Use when the user asks to review, triage, or assess a defect or bug ticket.
+description: Review a newly submitted Jira defect like a first-line reviewer — clarify the issue, collect impact/frequency/workarounds from the submitter, judge scope, find duplicates, and propose a disposition — grounded in the wiki. Use for a single ticket (key or pasted text) or headless polling (--auto). Use when the user asks to review, triage, or assess a defect or bug ticket.
 ---
 
 # Wiki Defect Review

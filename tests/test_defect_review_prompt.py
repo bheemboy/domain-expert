@@ -97,6 +97,85 @@ def test_critic_exempts_asks_from_tone_check():
     assert "required form" in text
 
 
+# ── positioning-alignment locks (agreed 2026-07-13) ────────────────────
+
+def test_prompt_sufficiency_bar_is_reviewer_framed():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "decide a disposition?" in text
+    assert "Can a developer reproduce or locate" not in text
+    assert "the developer's later conversation" in text
+
+
+def test_prompt_three_customer_only_facts_include_impact():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "Three facts only the customer can supply" in text
+    assert "Two facts only the customer can supply" not in text
+
+
+def test_prompt_troubleshooting_conditioned_on_description_or_workaround():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "pin down what the issue actually is" in text
+    assert "identify a potential workaround" in text
+    assert "or validate" not in text  # positioning grants identify only
+
+
+def test_prompt_citation_rule_bans_wiki_page_names():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "never name wiki pages" in text.lower()
+    assert '"the wiki page on X says"' not in text
+    assert "readers cannot open it" in text
+
+
+def test_prompt_bans_code_identifiers_in_comments():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "function or file names" in text
+
+
+def test_prompt_fix_directions_is_scope_signal():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "**Possible fix directions**" in text
+    assert "scope signal, not guidance" in text.lower()
+    assert text.index("**Possible fix directions**") < text.index("**Caveats**")
+    # direct product-level phrasing is sanctioned — mirror of the ask
+    # imperative exemption, so the critic can't flag the modeled form
+    assert "not on direct phrasing" in text
+
+
+def test_critic_fix_directions_guard_covers_effort_and_allows_direct_form():
+    text = " ".join(CRITIC.read_text(encoding="utf-8").split())
+    assert "effort estimate" in text
+    assert "expected form" in text
+
+
+def test_prompt_impact_is_business_framed_and_attributed():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "customer's business" in text
+    assert "never your own estimate" in text
+
+
+def test_prompt_scope_judgment_not_cited_as_wiki_in_comment():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "state the boundary plainly" in text
+
+
+def test_critic_flags_wiki_and_code_references():
+    text = " ".join(CRITIC.read_text(encoding="utf-8").split()).lower()
+    assert "wiki page" in text
+    assert "function or file names" in text
+
+
+def test_critic_guards_fix_directions_section():
+    text = " ".join(CRITIC.read_text(encoding="utf-8").split())
+    assert "Possible fix directions" in text
+
+
+def test_skill_description_no_longer_promises_troubleshooting():
+    text = SKILL.read_text(encoding="utf-8")
+    head = text.split("---", 2)[1]
+    assert "suggest troubleshooting" not in head
+    assert "propose a disposition" in head
+
+
 def test_skill_notice_fires_only_for_assessments():
     text = " ".join(SKILL.read_text(encoding="utf-8").split())
     assert "only after a `kind: assessment` delivery" in text

@@ -54,7 +54,7 @@ _DEVELOPER_HEADER = "**Notes for developer**"
 _DISPOSITION_RE = re.compile(r"^\*\*Proposed disposition")
 _OTHER_SECTIONS = ("Issue summary", "Frequency", "Impact",
                    "Potential workaround", "Evidence", "Likely related",
-                   "Caveats")
+                   "Possible fix directions", "Caveats")
 
 _ASK_LINE_RE = re.compile(r"^\d+[.)]\s+")
 _SUBSTEP_RE = re.compile(r"^\s{2,}(?:\d+[.)]|-)\s+")

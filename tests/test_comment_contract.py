@@ -118,6 +118,13 @@ def test_assessment_disposition_before_workaround_flagged():
     assert any(v.startswith("order") for v in violations)
 
 
+def test_assessment_disposition_before_fix_directions_flagged():
+    text = _assessment("**Proposed disposition:** accept for a fix.\n\n"
+                       "**Possible fix directions:** unify the exit paths.")
+    violations = cc.check(text, "assessment")
+    assert any(v.startswith("order") for v in violations)
+
+
 def test_missing_marker_flagged():
     violations = cc.check("Hello Martin,\n\n1. Which version?", "ask")
     assert any(v.startswith("marker") for v in violations)

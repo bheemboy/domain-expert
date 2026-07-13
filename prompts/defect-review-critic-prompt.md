@@ -37,15 +37,24 @@ block, in order:
    block.
    A reviewers block exists only to support the disposition decision: flag
    for deletion anything that tells a developer how to fix the issue or
-   tells QA how to test it after a fix. Reviewers decide by how often the
-   issue happens and what it costs the customer — flag a reviewers block
-   that never states frequency or customer impact when the ticket gives
-   them. Flag technical reproducibility presented as how often the
-   customer actually hits the issue (they are different facts; if the
-   ticket does not say how often the affected operation is used, the
-   draft must say that is unknown). Flag any workaround presented as
-   helpful without the reporter having said it is acceptable —
-   acceptability is the customer's call, not the bot's. Related tickets must be at most one sentence of keys
+   tells QA how to test it after a fix. A "Possible fix directions"
+   section, when present, is a scope signal only — flag any line in it
+   that points at code or carries an effort estimate. A direct
+   product-level line ("route both exit paths through the same layout
+   save") is that section's expected form, not a violation.
+   Reviewers decide by how often the issue happens and what it costs the
+   customer — flag a reviewers block that never states frequency or
+   customer impact when the ticket gives them. Flag technical
+   reproducibility presented as how often the customer actually hits the
+   issue (they are different facts; if the ticket does not say how often
+   the affected operation is used, the draft must say that is unknown).
+   Flag business impact stated as the bot's own judgment rather than as
+   the reporter's statement or as unknown. Flag any workaround presented
+   as helpful without the reporter having said it is acceptable —
+   acceptability is the customer's call, not the bot's.
+   Readers cannot open the bot's internal wiki, and reviewers do not read
+   code: flag any mention of a wiki page, or of code function or file
+   names, and give a plain-language or Jira-key replacement. Related tickets must be at most one sentence of keys
    ("Likely related: KEY-1, KEY-2.") — flag any per-ticket explanations or
    longer duplicate discussion. The block ends with the
    `**Proposed disposition**` line — never ask to move it earlier.
