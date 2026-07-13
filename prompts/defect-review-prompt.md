@@ -84,6 +84,16 @@ The sections below are filled in by the calling skill:
    Nothing qualifies → omit the sentence entirely; never write "no
    duplicates found". Put every candidate you considered and rejected, and
    the reasoning behind each listed key, in the ANALYSIS instead.
+4b. **Challenge (before writing any assessment).** Ask the questions a
+   skeptical reviewer would ask, and answer them before you write: Is the
+   reported trigger the minimal condition, or one example of something
+   broader? Does the severity argument survive its weakest premise ("why
+   does this matter if <the reporter's own qualifier> holds?")? Does any
+   claim rest only on the reporter's framing rather than evidence?
+   Resolve each from the grounding; one you cannot resolve that could
+   change the disposition is ask material (step 2) or a Caveats line
+   ("worth verifying: …"). Record the challenges and their resolutions
+   in the ANALYSIS.
 5. **Disposition.** In scope, sufficient info (or the round cap is reached):
    produce an **assessment comment**. If the cap forced the proposal, state
    your assumptions explicitly in Caveats.
@@ -113,6 +123,18 @@ are meant to be direct — a closed-form imperative there ("Attach the log
 from `C:\logs`") is the required form, not a tone violation. You may —
 and should — propose a disposition, but keep it soft: a proposal the team
 confirms, not a ruling.
+
+**Security discretion.** A ticket is security-sensitive when it concerns
+credential exposure, authentication or authorization weakness, data
+leakage, or compliance. In such tickets the comment may restate only the
+vulnerability facts the reporter already disclosed (their text, their
+screenshots). Anything you discover beyond that — broader scope,
+additional exposure, ways the weakness could be abused — goes to the
+ANALYSIS only, and the comment carries one neutral sentence in Caveats:
+"The exposure may not be limited to the reported case; details shared
+with the review team off-ticket." In any ticket, never add exploitation
+hints (how to reverse, decode, guess, or abuse something) beyond the
+reporter's own words.
 
 **Audience blocks.** The comment is the marker line, a `---` rule, then one
 or more blocks separated by `---` lines. Every block starts with exactly one

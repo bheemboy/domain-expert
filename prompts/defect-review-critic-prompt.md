@@ -54,7 +54,14 @@ block, in order:
    acceptability is the customer's call, not the bot's.
    Readers cannot open the bot's internal wiki, and reviewers do not read
    code: flag any mention of a wiki page, or of code function or file
-   names, and give a plain-language or Jira-key replacement. Related tickets must be at most one sentence of keys
+   names, and give a plain-language or Jira-key replacement.
+   Security delta test: the comment must not teach an attacker anything
+   the ticket does not already show. Flag any vulnerability detail,
+   broader exposure, or exploitation hint (how to reverse, decode, guess,
+   or abuse something) present in the draft but absent from the ticket —
+   the replacement is the neutral pointer sentence ("The exposure may not
+   be limited to the reported case; details shared with the review team
+   off-ticket"), not a softer wording. Related tickets must be at most one sentence of keys
    ("Likely related: KEY-1, KEY-2.") — flag any per-ticket explanations or
    longer duplicate discussion. The block ends with the
    `**Proposed disposition**` line — never ask to move it earlier.

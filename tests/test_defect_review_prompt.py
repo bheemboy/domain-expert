@@ -97,6 +97,54 @@ def test_critic_exempts_asks_from_tone_check():
     assert "required form" in text
 
 
+# ── self-challenge + security discretion locks (2026-07-13) ────────────
+
+CHALLENGER = (Path(__file__).parent.parent / "prompts"
+              / "defect-review-challenger-prompt.md")
+
+
+def test_prompt_has_self_challenge_step():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "**Challenge" in text
+    assert "weakest premise" in text
+    assert "minimal condition" in text
+
+
+def test_prompt_security_discretion_rule():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "security-sensitive" in text
+    assert "already disclosed" in text
+    assert "off-ticket" in text
+    assert "exploitation hints" in text
+
+
+def test_critic_runs_security_delta_test():
+    text = " ".join(CRITIC.read_text(encoding="utf-8").split())
+    assert "absent from the ticket" in text
+    assert "exploitation" in text
+
+
+def test_challenger_prompt_exists_with_contract():
+    text = " ".join(CHALLENGER.read_text(encoding="utf-8").split())
+    assert "CHALLENGES: none" in text
+    assert "skeptical" in text.lower()
+    assert "at most 3" in text
+    assert "weakest premise" in text
+
+
+def test_skill_runs_challenger_for_assessments():
+    text = " ".join(SKILL.read_text(encoding="utf-8").split())
+    assert "defect-review-challenger-prompt.md" in text
+    assert "Challenge pass" in text
+    assert "One challenger run, one revision, never a loop" in text
+
+
+def test_skill_security_pointer_forces_notify():
+    text = " ".join(SKILL.read_text(encoding="utf-8").split())
+    assert "even when `also_notify` is false" in text
+    assert "refuses to email the requesting account" in text
+
+
 # ── positioning-alignment locks (agreed 2026-07-13) ────────────────────
 
 def test_prompt_sufficiency_bar_is_reviewer_framed():

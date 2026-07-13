@@ -134,6 +134,28 @@ Parse the three output sections: `### COMMENT (kind: …)`, `### ANALYSIS`,
 been delivered the cap no longer applies — the brain's consequential-only
 bar governs any further ask.
 
+## 4b. Challenge pass (assessments only — never skip)
+
+`kind: ask` skips this step. Dispatch a **fresh subagent** (Agent tool,
+`general-purpose`) whose entire prompt is
+`${CLAUDE_PLUGIN_ROOT}/prompts/defect-review-challenger-prompt.md` with
+ONLY these sections filled:
+
+- `## Ticket` — the step 3.1 rendering.
+- `## Draft assessment comment` — the brain's COMMENT from step 4.
+
+Give it nothing else — its independence is the point.
+
+- `CHALLENGES: none` → proceed to step 5.
+- Numbered challenges → re-run the brain ONCE with them appended: "A
+  skeptical reviewer raised these challenges. Resolve each from your
+  grounding — a challenge you cannot resolve becomes a Caveats line, or
+  ask material if it could change the disposition; apply the security
+  discretion rule to anything newly discovered — and output all three
+  sections again." One challenger run, one revision, never a loop.
+- Append the challenges and their resolutions to the ANALYSIS under a
+  `Challenge:` heading — audit trail, like the critic's verdict.
+
 ## 5. Enforce the contract (mechanical, structure only — never skip)
 
 Write the COMMENT section to a temp file, then:
@@ -238,6 +260,14 @@ comment, edited in place.
 
 If `also_notify: true`, send the notify email too (same layout, subject
 prefix `[defect-review posted]`).
+
+**Security off-ticket pointer:** when the comment contains the off-ticket
+pointer sentence (security discretion rule), ALWAYS send the notify email
+(subject prefix `[defect-review security]`, body = the ANALYSIS) even
+when `also_notify` is false — the pointer must be true. Jira's notify API
+refuses to email the requesting account (recipients-empty 400): when
+`notify_user` is the bot's own account, put the ANALYSIS in the run log
+instead and say so in the step 8 report line.
 
 Primary delivery failed — the ask post, the assessment update/post, or the
 draft-mode email (non-zero exit) → report the error, do NOT write state
