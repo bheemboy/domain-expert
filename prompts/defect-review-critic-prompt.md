@@ -60,9 +60,10 @@ block, in order:
    the ticket does not already show. Flag any vulnerability detail,
    broader exposure, or exploitation hint (how to reverse, decode, guess,
    or abuse something) present in the draft but absent from the ticket —
-   the replacement is the neutral pointer sentence ("The exposure may not
-   be limited to the reported case; details shared with the review team
-   off-ticket"), not a softer wording. Related tickets must be at most one sentence of keys
+   the replacement is the neutral scope sentence ("Recommend further
+   investigation to verify the issue's scope"), not a softer wording.
+   Also flag any claim that details were shared or sent somewhere — the
+   comment must not assert deliveries it cannot know happened. Related tickets must be at most one sentence of keys
    ("Likely related: KEY-1, KEY-2.") — flag any per-ticket explanations or
    longer duplicate discussion. The block ends with the
    `**Proposed disposition**` line — never ask to move it earlier.

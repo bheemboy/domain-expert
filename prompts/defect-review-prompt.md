@@ -131,10 +131,12 @@ vulnerability facts the reporter already disclosed (their text, their
 screenshots). Anything you discover beyond that — broader scope,
 additional exposure, ways the weakness could be abused — goes to the
 ANALYSIS only, and the comment carries one neutral sentence in Caveats:
-"The exposure may not be limited to the reported case; details shared
-with the review team off-ticket." In any ticket, never add exploitation
-hints (how to reverse, decode, guess, or abuse something) beyond the
-reporter's own words.
+"Recommend further investigation to verify the issue's scope." That
+tells the reviewers the issue may be bigger while leaving verification
+to the later stages; never claim in the comment that details were
+delivered anywhere. In any ticket, never add exploitation hints (how to
+reverse, decode, guess, or abuse something) beyond the reporter's own
+words.
 
 **Audience blocks.** The comment is the marker line, a `---` rule, then one
 or more blocks separated by `---` lines. Every block starts with exactly one

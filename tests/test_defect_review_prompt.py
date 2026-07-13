@@ -114,8 +114,11 @@ def test_prompt_security_discretion_rule():
     text = " ".join(PROMPT.read_text(encoding="utf-8").split())
     assert "security-sensitive" in text
     assert "already disclosed" in text
-    assert "off-ticket" in text
+    assert "Recommend further investigation to verify" in text
     assert "exploitation hints" in text
+    # the comment must never claim an off-ticket delivery that may not
+    # have happened (notify-to-self fails on single-account setups)
+    assert "shared with the review team off-ticket" not in text
 
 
 def test_critic_runs_security_delta_test():

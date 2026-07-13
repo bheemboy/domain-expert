@@ -263,13 +263,14 @@ comment, edited in place.
 If `also_notify: true`, send the notify email too (same layout, subject
 prefix `[defect-review posted]`).
 
-**Security off-ticket pointer:** when the comment contains the off-ticket
-pointer sentence (security discretion rule), ALWAYS send the notify email
-(subject prefix `[defect-review security]`, body = the ANALYSIS) even
-when `also_notify` is false — the pointer must be true. Jira's notify API
-refuses to email the requesting account (recipients-empty 400): when
-`notify_user` is the bot's own account, put the ANALYSIS in the run log
-instead and say so in the step 8 report line.
+**Security withheld detail:** when the security discretion rule kept
+discovered detail out of the comment (the ANALYSIS carries it), send the
+notify email (subject prefix `[defect-review security]`, body = the
+ANALYSIS) even when `also_notify` is false, so the review team gets the
+full picture. Jira's notify API refuses to email the requesting account
+(recipients-empty 400): when `notify_user` is the bot's own account, put
+the ANALYSIS in the run log instead and say so in the step 8 report
+line. The comment itself never claims a delivery either way.
 
 Primary delivery failed — the ask post, the assessment update/post, or the
 draft-mode email (non-zero exit) → report the error, do NOT write state
