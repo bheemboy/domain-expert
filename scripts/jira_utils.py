@@ -273,12 +273,14 @@ def _prefix_lines(text: str, prefix: str) -> str:
 # Markdown → ADF (comment posting)
 # ─────────────────────────────────────────────
 # Inverse of adf_to_md for the pragmatic subset review comments need:
-# paragraphs, headings, bullet/ordered lists (one nesting level), fenced code,
-# and inline bold/italic/code/links. Unknown constructs degrade to plain text.
+# paragraphs (single newlines within one become hardBreaks), headings,
+# bullet/ordered lists (one nesting level), fenced code, and inline
+# bold/italic (* or _)/code/links. Unknown constructs degrade to plain text.
 
 _MD_INLINE_RE = re.compile(
     r"\*\*(?P<strong>.+?)\*\*"
     r"|\*(?P<em>.+?)\*"
+    r"|(?<!\w)_(?P<em2>[^_]+?)_(?!\w)"  # word-boundary guards keep snake_case intact
     r"|`(?P<code>[^`]+)`"
     r"|\[(?P<ltext>[^\]]+)\]\((?P<lurl>[^)\s]+)\)"
 )
@@ -304,6 +306,8 @@ def _md_inline_nodes(text: str) -> list:
             nodes.append(_adf_text_node(m.group("strong"), [{"type": "strong"}]))
         elif m.group("em") is not None:
             nodes.append(_adf_text_node(m.group("em"), [{"type": "em"}]))
+        elif m.group("em2") is not None:
+            nodes.append(_adf_text_node(m.group("em2"), [{"type": "em"}]))
         elif m.group("code") is not None:
             nodes.append(_adf_text_node(m.group("code"), [{"type": "code"}]))
         else:
@@ -419,8 +423,12 @@ def md_to_adf(md: str) -> dict:
 
     def flush_para():
         if para:
-            blocks.append({"type": "paragraph",
-                           "content": _md_inline_nodes(" ".join(para))})
+            content = []
+            for line in para:
+                if content:
+                    content.append({"type": "hardBreak"})
+                content.extend(_md_inline_nodes(line))
+            blocks.append({"type": "paragraph", "content": content})
             para.clear()
 
     i = 0

@@ -5,7 +5,47 @@ def test_paragraphs_split_on_blank_lines():
     doc = jira_utils.md_to_adf("first para\nsame para\n\nsecond para")
     assert doc["type"] == "doc" and doc["version"] == 1
     assert [b["type"] for b in doc["content"]] == ["paragraph", "paragraph"]
-    assert doc["content"][0]["content"][0]["text"] == "first para same para"
+
+
+def test_single_newlines_become_hard_breaks():
+    # The comment header is three consecutive lines in one paragraph; joining
+    # them with spaces renders the header as one run-on line in Jira.
+    doc = jira_utils.md_to_adf("first line\nsecond line")
+    para = doc["content"][0]["content"]
+    assert {"type": "hardBreak"} in para
+    texts = [n["text"] for n in para if n["type"] == "text"]
+    assert texts == ["first line", "second line"]
+
+
+def test_underscore_em():
+    doc = jira_utils.md_to_adf("_Reflects the ticket as of 2026-07-13 13:33 UTC_")
+    node = doc["content"][0]["content"][0]
+    assert node["marks"] == [{"type": "em"}]
+    assert node["text"] == "Reflects the ticket as of 2026-07-13 13:33 UTC"
+
+
+def test_snake_case_identifiers_not_emphasized():
+    doc = jira_utils.md_to_adf("set content_hash and raw_imports_dir today")
+    nodes = doc["content"][0]["content"]
+    assert not any(n.get("marks") for n in nodes)
+    assert "".join(n["text"] for n in nodes) == "set content_hash and raw_imports_dir today"
+
+
+def test_comment_header_shape_renders_three_lines_with_em():
+    md = ("🤖 Automated defect review — disposition proposal\n"
+          "_Reflects the ticket as of 2026-07-13 13:33 UTC_\n"
+          "_AI-generated: statements in this comment may be inaccurate_\n"
+          "---\n"
+          "\n"
+          "Hello Martin,")
+    doc = jira_utils.md_to_adf(md)
+    assert [b["type"] for b in doc["content"]] == ["paragraph", "rule", "paragraph"]
+    header = doc["content"][0]["content"]
+    assert sum(1 for n in header if n["type"] == "hardBreak") == 2
+    em_texts = [n["text"] for n in header
+                if n["type"] == "text" and {"type": "em"} in n.get("marks", [])]
+    assert em_texts == ["Reflects the ticket as of 2026-07-13 13:33 UTC",
+                        "AI-generated: statements in this comment may be inaccurate"]
 
 
 def test_inline_marks():
