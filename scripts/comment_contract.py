@@ -7,16 +7,20 @@ are never left to the prompt alone. Two kinds:
                any thread participant); ≤3 numbered asks (contiguous 1..N);
                ≤1 procedure of ≤5 sub-steps whose last step is a report-back
                line; ~150 words (~300 with a procedure).
-  assessment — team-facing: reviewers block first, developer block optional;
-               ~400 words over the whole comment.
+  assessment — team-facing: exactly one reviewers block, enough to decide a
+               disposition and nothing else (no developer block); a
+               '**Proposed disposition**' line is required and must be the
+               last section; ~250 words.
 
 Structure: typed header (`<marker> — <label>`, code-composed via
 ensure_header, never LLM-written), an optional freshness line for
 assessments, a `---` rule, then audience blocks separated by `---`.
 Each block opens with one of: `Hello <name>,` / `**Notes for defect
-reviewers**` / `**Notes for developer**`. Only structure is checked here —
+reviewers**`. Only structure is checked here —
 value, relevance, and plain-English judgment belong to the critic pass.
-Word budgets carry 10% grace (ceiling = target × 1.1).
+Word budgets carry 10% grace (ceiling = target × 1.1) and measure the
+audience blocks only — the code-composed header and freshness line are
+not charged against the LLM's budget.
 """
 
 import argparse
@@ -27,7 +31,7 @@ from pathlib import Path
 
 ASK_WORDS = 165          # 150 + 10% grace
 ASK_PROC_WORDS = 330     # 300 + 10% grace
-ASSESS_WORDS = 440       # 400 + 10% grace
+ASSESS_WORDS = 275       # 250 + 10% grace
 MAX_ASKS = 3
 MAX_PROC_STEPS = 5
 DEFAULT_MARKER = "🤖 Automated defect review"
@@ -46,6 +50,11 @@ _FRESHNESS_RE = re.compile(r"^_Reflects the ticket as of .+_$")
 _HELLO_RE = re.compile(r"^Hello\b[^,\n]*,\s*$")
 _REVIEWERS_HEADER = "**Notes for defect reviewers**"
 _DEVELOPER_HEADER = "**Notes for developer**"
+
+_DISPOSITION_RE = re.compile(r"^\*\*Proposed disposition")
+_OTHER_SECTIONS = ("Issue summary", "Frequency", "Impact",
+                   "Potential workaround", "Evidence", "Likely related",
+                   "Caveats")
 
 _ASK_LINE_RE = re.compile(r"^\d+[.)]\s+")
 _SUBSTEP_RE = re.compile(r"^\s{2,}(?:\d+[.)]|-)\s+")
@@ -154,8 +163,7 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
         if not audience:
             violations.append(
                 f"audience: block starting {header[:40]!r} must open with "
-                "'Hello <name>,', '**Notes for defect reviewers**', or "
-                "'**Notes for developer**'")
+                "'Hello <name>,' or '**Notes for defect reviewers**'")
         audiences.append(audience)
 
     if kind == "assessment":
@@ -167,11 +175,31 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
             violations.append(
                 "kind: an assessment must not contain a 'Hello …,' submitter "
                 "block — submitter requests are ask comments")
+        if "developer" in audiences:
+            violations.append(
+                "kind: an assessment must not contain a '**Notes for "
+                "developer**' block — give reviewers only what the "
+                "disposition decision needs; code-adjacent pointers go to "
+                "the ANALYSIS")
         if audiences and audiences[0] not in ("reviewers", ""):
             violations.append(
                 "kind: the first assessment block must be "
                 "'**Notes for defect reviewers**'")
-        wc = word_count(text)
+        lines = [ln.strip() for ln in text.split("\n")]
+        dispo = [i for i, ln in enumerate(lines) if _DISPOSITION_RE.match(ln)]
+        if not dispo:
+            violations.append(
+                "disposition: an assessment must contain a "
+                "'**Proposed disposition:** …' line")
+        else:
+            trailing = [name for ln in lines[dispo[0] + 1:]
+                        for name in _OTHER_SECTIONS if ln.startswith(f"**{name}")]
+            if trailing:
+                violations.append(
+                    "order: '**Proposed disposition**' must be the LAST "
+                    f"section of the reviewers block — move '{trailing[0]}' "
+                    "above it")
+        wc = word_count("\n".join(blocks))
         if wc > ASSESS_WORDS:
             violations.append(
                 f"words: {wc} exceeds the assessment ceiling {ASSESS_WORDS}")
@@ -204,7 +232,7 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
                 "report-back: the procedure's last sub-step must say what to "
                 "observe and what to send (report/attach/send/…)")
     ceiling = ASK_PROC_WORDS if procedures else ASK_WORDS
-    wc = word_count(text)
+    wc = word_count("\n".join(blocks))
     if wc > ceiling:
         violations.append(f"words: {wc} exceeds the ask ceiling {ceiling}")
     return violations

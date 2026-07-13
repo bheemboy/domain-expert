@@ -20,9 +20,14 @@ The sections below are filled in by the calling skill:
 
 ## What to check
 
-The comment is one or more audience blocks separated by `---`, each opening
-with `Hello <name>,` (the submitter), `**Notes for defect reviewers**`, or
-`**Notes for developer**`. For every block, in order:
+The draft opens with a code-composed bot marker line and, on assessments,
+an italic `_Reflects the ticket as of …_` freshness line, before the first
+`---`. The pipeline owns those lines: never flag or edit them, and never
+treat them as a block. Below the `---` rule, the comment is one or more
+audience blocks separated by `---`, each opening with `Hello <name>,` (the
+addressee — the reporter, or another thread participant the question is
+for) or `**Notes for defect reviewers**` (the review team). For every
+block, in order:
 
 1. **Value.** Would this reader do something differently for having read
    this block? Cut anything that only explains or justifies the bot's
@@ -30,6 +35,20 @@ with `Hello <name>,` (the submitter), `**Notes for defect reviewers**`, or
    observations, tickets fixed long ago cited as background, hedging that
    asks for nothing. If a whole block adds no value, say to delete the
    block.
+   A reviewers block exists only to support the disposition decision: flag
+   for deletion anything that tells a developer how to fix the issue or
+   tells QA how to test it after a fix. Reviewers decide by how often the
+   issue happens and what it costs the customer — flag a reviewers block
+   that never states frequency or customer impact when the ticket gives
+   them. Flag technical reproducibility presented as how often the
+   customer actually hits the issue (they are different facts; if the
+   ticket does not say how often the affected operation is used, the
+   draft must say that is unknown). Flag any workaround presented as
+   helpful without the reporter having said it is acceptable —
+   acceptability is the customer's call, not the bot's. Related tickets must be at most one sentence of keys
+   ("Likely related: KEY-1, KEY-2.") — flag any per-ticket explanations or
+   longer duplicate discussion. The block ends with the
+   `**Proposed disposition**` line — never ask to move it earlier.
 2. **Asks** (submitter block): every ask must be answerable exactly as
    asked — closed-form, one action or one question each, numbered 1..N.
    The block must contain nothing but the greeting, one status line, and
@@ -50,7 +69,9 @@ with `Hello <name>,` (the submitter), `**Notes for defect reviewers**`, or
    a softer replacement: any disposition stated to the submitter ("this is
    not a defect", "working as designed" — sharing design facts with their
    source is fine, ruling on the report is not); orders aimed at a person
-   in any block (proposals and options are fine, commands are not); any
+   in any block (proposals and options are fine, commands are not — but
+   the numbered asks and procedure sub-steps of a `Hello` block are
+   exempt: closed-form imperatives are their required form); any
    sentence that judges the report or the reporter rather than describing
    the product. Dispositions must read as proposals for the team to
    confirm, not rulings.

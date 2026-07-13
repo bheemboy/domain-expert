@@ -65,10 +65,57 @@ def test_assessment_word_budget():
     assert any("word" in v.lower() for v in violations)
 
 
-def test_compliant_assessment_passes():
-    text = _assessment("**Verdict:** confirmed, low. Two sentences of summary.",
-                       "Check the dialog padding override.")
+def test_assessment_word_budget_tightened_to_250():
+    # 250-word target (275 ceiling with grace): ~300 words must now fail.
+    body = "word " * 300
+    violations = cc.check(_assessment(body), "assessment")
+    assert any("word" in v.lower() for v in violations)
+
+
+def test_word_budget_excludes_code_composed_header():
+    # The marker and freshness line are code-owned; the brain's budget must
+    # cover only the blocks it writes. 270 block-words fit the 275 ceiling
+    # even though header + freshness push the gross count past it.
+    body = ("**Issue summary:** " + "word " * 258
+            + "\n\n**Proposed disposition:** accept for a fix; high confidence.")
+    text = (f"{MARKER} — disposition proposal\n"
+            "_Reflects the ticket as of 2026-07-13 12:00 UTC_\n---\n\n"
+            f"{REVIEWERS}\n\n{body}")
+    assert cc.word_count(text) > cc.ASSESS_WORDS  # gross count would fail
     assert cc.check(text, "assessment") == []
+
+
+def test_compliant_assessment_passes():
+    text = _assessment("**Issue summary:** Two sentences of summary.\n\n"
+                       "**Proposed disposition:** accept for a fix; high confidence.")
+    assert cc.check(text, "assessment") == []
+
+
+def test_assessment_developer_block_flagged():
+    text = _assessment("**Proposed disposition:** accept for a fix.",
+                       "Check the dialog padding override.")
+    violations = cc.check(text, "assessment")
+    assert any("developer" in v for v in violations)
+
+
+def test_assessment_without_disposition_flagged():
+    text = _assessment("**Issue summary:** Two sentences of summary.")
+    violations = cc.check(text, "assessment")
+    assert any(v.startswith("disposition") for v in violations)
+
+
+def test_assessment_disposition_not_last_flagged():
+    text = _assessment("**Proposed disposition:** accept for a fix.\n\n"
+                       "**Issue summary:** Two sentences of summary.")
+    violations = cc.check(text, "assessment")
+    assert any(v.startswith("order") for v in violations)
+
+
+def test_assessment_disposition_before_workaround_flagged():
+    text = _assessment("**Proposed disposition:** accept for a fix.\n\n"
+                       "**Potential workaround:** close from the main window.")
+    violations = cc.check(text, "assessment")
+    assert any(v.startswith("order") for v in violations)
 
 
 def test_missing_marker_flagged():
@@ -134,7 +181,7 @@ def test_ensure_header_converts_timestamp_to_utc():
 def test_check_accepts_typed_header_and_freshness_line():
     text = (f"{MARKER} — disposition proposal\n"
             "_Reflects the ticket as of 2026-07-10 06:07 UTC_\n---\n\n"
-            f"{REVIEWERS}\n\nverdict")
+            f"{REVIEWERS}\n\n**Proposed disposition:** accept for a fix.")
     assert cc.check(text, "assessment") == []
 
 

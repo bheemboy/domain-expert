@@ -224,10 +224,12 @@ comment, edited in place.
   ```
   No such comment (first assessment, legacy untyped comment, or a human
   deleted it) → fall back to `--post-comment` as for an ask.
-- **Disposition-change notice** — comment edits do not notify watchers, so
-  when the STATE `disposition_code` differs from a non-null
-  `prior_disposition_code`, additionally post one comment built
-  mechanically (no brain, no contract/critic pass), exactly:
+- **Disposition-change notice** — only after a `kind: assessment`
+  delivery, never for an ask (an ask's null `disposition_code` is not a
+  change). Comment edits do not notify watchers, so when the STATE
+  `disposition_code` differs from a non-null `prior_disposition_code`,
+  additionally post one comment built mechanically (no brain, no
+  contract/critic pass), exactly:
   ```
   <marker> — assessment revised
   Previous assessment revised. "<prior_disposition>" → "<disposition>"
@@ -237,9 +239,15 @@ comment, edited in place.
 If `also_notify: true`, send the notify email too (same layout, subject
 prefix `[defect-review posted]`).
 
-Delivery failed (non-zero exit) → report the error, do NOT write state for
-that ticket (it retries next poll), continue with the next ticket, and exit
-non-zero at the end so the wrapper flags the run.
+Primary delivery failed — the ask post, the assessment update/post, or the
+draft-mode email (non-zero exit) → report the error, do NOT write state
+for that ticket (it retries next poll), continue with the next ticket, and
+exit non-zero at the end so the wrapper flags the run. A secondary write
+failing after the primary comment landed — the disposition-change notice
+or an `also_notify` email → still record state in step 7: the comment is
+on the ticket, and skipping state would both block the retry
+(bot-spoke-last hides the ticket) and desync rounds/disposition from
+reality. Report the secondary failure and exit non-zero.
 
 ## 7. Record state (auto mode only, after successful delivery)
 
