@@ -165,9 +165,11 @@ python "${CLAUDE_PLUGIN_ROOT}/scripts/comment_contract.py" /tmp/defect-review-<K
 ```
 
 `--fix-marker` composes the typed header in place — `<marker> — needs more
-information` (ask) or `<marker> — disposition proposal` (assessment) plus
-the freshness line (`_Reflects the ticket as of …_`) from `--updated` —
-replacing anything the brain wrote there. Omit `--updated` for pasted-text
+information` (ask) or `<marker> — disposition proposal` (assessment), the
+freshness line (`_Reflects the ticket as of …_`, assessments with
+`--updated`), and the AI disclaimer line (`_AI-generated: statements in
+this comment may be inaccurate_`, every kind) — replacing anything the
+brain wrote there. Omit `--updated` for pasted-text
 reviews (no ticket timestamp exists).
 
 Exit 1 → ONE revision pass: re-run the brain with the violations appended

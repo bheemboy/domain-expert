@@ -145,9 +145,13 @@ def test_old_marker_comment_passes_marker_check():
     assert not any(v.startswith("marker") for v in violations)
 
 
-def test_ensure_header_inserts_typed_header_and_rule():
+DISCLAIMER = "_AI-generated: statements in this comment may be inaccurate_"
+
+
+def test_ensure_header_inserts_typed_header_disclaimer_and_rule():
     fixed = cc.ensure_header("Hello Martin,\n\n1. Which version?", MARKER, "ask")
-    assert fixed.startswith(f"{MARKER} — needs more information\n---\n\n")
+    assert fixed.startswith(
+        f"{MARKER} — needs more information\n{DISCLAIMER}\n---\n\n")
     assert cc.ensure_header(fixed, MARKER, "ask") == fixed  # idempotent
 
 
@@ -165,7 +169,16 @@ def test_ensure_header_stamps_freshness_line_for_assessment():
     lines = fixed.split("\n")
     assert lines[0] == f"{MARKER} — disposition proposal"
     assert lines[1] == "_Reflects the ticket as of 2026-07-10 06:07 UTC_"
-    assert lines[2] == "---"
+    assert lines[2] == DISCLAIMER
+    assert lines[3] == "---"
+
+
+def test_check_accepts_disclaimer_line_and_excludes_it_from_budget():
+    text = (f"{MARKER} — disposition proposal\n"
+            "_Reflects the ticket as of 2026-07-10 06:07 UTC_\n"
+            f"{DISCLAIMER}\n---\n\n"
+            f"{REVIEWERS}\n\n**Proposed disposition:** accept for a fix.")
+    assert cc.check(text, "assessment") == []
 
 
 def test_ensure_header_replaces_stale_freshness_line():

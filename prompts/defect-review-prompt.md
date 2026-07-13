@@ -236,9 +236,10 @@ omitting empty ones:
 ### COMMENT (kind: ask|assessment)
 
 The ready-to-post Jira comment body, in markdown: a `---` rule, then the
-audience blocks. Do NOT write the marker line or any type label — the
-skill composes the header (`<marker> — <label>`, plus a freshness line on
-assessments) mechanically; anything you write there is replaced.
+audience blocks. Do NOT write the marker line, any type label, or an AI
+disclaimer — the skill composes the header (`<marker> — <label>`, a
+freshness line on assessments, and the disclaimer line) mechanically;
+anything you write there is replaced.
 
 ### ANALYSIS
 

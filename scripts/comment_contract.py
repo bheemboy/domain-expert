@@ -45,8 +45,11 @@ LABELS = {
     "revised": "assessment revised",
 }
 
+DISCLAIMER = "_AI-generated: statements in this comment may be inaccurate_"
+
 _RULE_LINE_RE = re.compile(r"^-{3,}\s*$")
 _FRESHNESS_RE = re.compile(r"^_Reflects the ticket as of .+_$")
+_DISCLAIMER_RE = re.compile(r"^_AI-generated:.*_$")
 _HELLO_RE = re.compile(r"^Hello\b[^,\n]*,\s*$")
 _REVIEWERS_HEADER = "**Notes for defect reviewers**"
 _DEVELOPER_HEADER = "**Notes for developer**"
@@ -82,10 +85,11 @@ def _split_blocks(text: str, marker: str, kind: str = ""):
         idx += 1
         while idx < len(lines) and not lines[idx].strip():
             idx += 1
-        if idx < len(lines) and _FRESHNESS_RE.match(lines[idx].strip()):
-            idx += 1
-            while idx < len(lines) and not lines[idx].strip():
+        for line_re in (_FRESHNESS_RE, _DISCLAIMER_RE):
+            if idx < len(lines) and line_re.match(lines[idx].strip()):
                 idx += 1
+                while idx < len(lines) and not lines[idx].strip():
+                    idx += 1
         if idx >= len(lines) or not _RULE_LINE_RE.match(lines[idx].strip()):
             violations.append("rule: the marker line must be followed by a --- rule")
         else:
@@ -245,10 +249,11 @@ def _freshness_line(updated: str) -> str:
 
 
 def ensure_header(text: str, marker: str, kind: str, updated: str = None) -> str:
-    """Compose the code-owned header: `<marker> — <label>` plus, for an
-    assessment with `updated` given, the freshness line, then the `---` rule.
-    Replaces any existing marker line (LLM-freelanced suffixes included) and
-    any stale freshness line. Idempotent."""
+    """Compose the code-owned header: `<marker> — <label>`, then (for an
+    assessment with `updated` given) the freshness line, then the AI
+    disclaimer line, then the `---` rule. Replaces any existing marker line
+    (LLM-freelanced suffixes included) and any stale freshness/disclaimer
+    line. Idempotent."""
     header = f"{marker} — {LABELS[kind]}"
     lines = text.split("\n")
     i = 0
@@ -259,13 +264,15 @@ def ensure_header(text: str, marker: str, kind: str, updated: str = None) -> str
         body = body[1:]
         while body and not body[0].strip():
             body = body[1:]
-        if body and _FRESHNESS_RE.match(body[0].strip()):
-            body = body[1:]
-            while body and not body[0].strip():
+        for line_re in (_FRESHNESS_RE, _DISCLAIMER_RE):
+            if body and line_re.match(body[0].strip()):
                 body = body[1:]
+                while body and not body[0].strip():
+                    body = body[1:]
     out = [header]
     if kind == "assessment" and updated:
         out.append(_freshness_line(updated))
+    out.append(DISCLAIMER)
     if body and _RULE_LINE_RE.match(body[0].strip()):
         out.extend(body)
     else:

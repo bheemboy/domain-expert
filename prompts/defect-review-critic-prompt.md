@@ -20,10 +20,11 @@ The sections below are filled in by the calling skill:
 
 ## What to check
 
-The draft opens with a code-composed bot marker line and, on assessments,
-an italic `_Reflects the ticket as of …_` freshness line, before the first
-`---`. The pipeline owns those lines: never flag or edit them, and never
-treat them as a block. Below the `---` rule, the comment is one or more
+The draft opens with a code-composed bot marker line, an italic
+`_AI-generated: …_` disclaimer line, and, on assessments, an italic
+`_Reflects the ticket as of …_` freshness line, before the first `---`.
+The pipeline owns those lines: never flag or edit them, and never treat
+them as a block. Below the `---` rule, the comment is one or more
 audience blocks separated by `---`, each opening with `Hello <name>,` (the
 addressee — the reporter, or another thread participant the question is
 for) or `**Notes for defect reviewers**` (the review team). For every
