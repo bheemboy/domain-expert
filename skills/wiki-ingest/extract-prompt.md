@@ -31,9 +31,22 @@ ticket — so capture everything business-relevant, and nothing else.
      3. If neither yields business meaning (illegible scan, dense diagram you can't
         confidently read), **escalate** per the rule above.
    - **Office (docx/xlsx/pptx)/csv** — download; extract what's feasible, flag the rest.
-   - **Video/audio, large/opaque binaries, zips, installers** — do NOT download;
-     record an un-ingested media gap in the import.
-   Fetch with `python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --attachments-dir /tmp/jira-<KEY>`.
+   - **Archives (`.zip`, `.tar.*`)** — downloaded and unpacked by the fetch
+     command below (size caps enforced by the script: 50 MB per file,
+     250 MB unpacked per archive). Triage from the printed manifest —
+     never read files in unpacked order. Select only files plausibly tied
+     to the item being ingested: name match to its key nouns or component,
+     error/crash logs over routine ones, mtime near the relevant events
+     when known. Install/setup logs and config dumps are noise unless the
+     item is about install/config. Hard budget: at most 5 files per
+     archive. Each selected file goes to a **dedicated subagent** (Agent
+     tool, `general-purpose`): give it the item summary, the key nouns,
+     and the file path; it returns only relevant excerpts plus a one-line
+     interpretation (≤10 lines). Never read archive contents in the main
+     context.
+   - **Video/audio, `.7z`, other large/opaque binaries, installers** — do NOT
+     download; record an un-ingested media gap in the import.
+   Fetch with `python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --unpack --attachments-dir /tmp/jira-<KEY>`.
    Files land in `/tmp/jira-<KEY>/`. Read images from there for vision; delete
    `/tmp/jira-<KEY>` when done.
    **Never silently drop** a business-relevant attachment.
