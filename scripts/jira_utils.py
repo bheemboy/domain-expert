@@ -845,6 +845,9 @@ def download_attachments(
     exts: set[str] | None = None,
     list_only: bool = False,
     force: bool = False,
+    max_file_bytes: int = DEFAULT_MAX_FILE_MB * 1024 * 1024,
+    unpack: bool = False,
+    max_unpacked_bytes: int = DEFAULT_MAX_UNPACKED_MB * 1024 * 1024,
 ) -> list[Path]:
     """Download an issue's attachments to ``dest_root/<ISSUE-KEY>/<filename>``.
 
@@ -852,7 +855,10 @@ def download_attachments(
     the already-fetched issue, so no extra API call is needed. The wiki ingest
     uses this to actually read images/PDFs rather than just their URLs. Downloaded
     files are raw sources — treat them as immutable. Existing files are skipped
-    unless ``force``. Returns the local paths written or already present.
+    unless ``force``. Files over ``max_file_bytes`` are skipped before download.
+    With ``unpack``, zip/tar archives are safely extracted into
+    ``<KEY>/_unpacked/<archive-stem>/`` (see ``unpack_archive``).
+    Returns the local paths written or already present.
     """
     key = issue.get("key", "UNKNOWN")
     attachments = (issue.get("fields") or {}).get("attachment") or []
@@ -870,31 +876,36 @@ def download_attachments(
         if exts and ext not in exts:
             print(f"  skip (ext) : {fname}")
             continue
+        size = int(att.get("size") or 0)
+        if max_file_bytes and size > max_file_bytes:
+            print(f"  skip (size): {fname} ({_human_size(size)} > {_human_size(max_file_bytes)} cap)")
+            continue
         if list_only:
             print(f"  would get  : {fname} ({_human_size(att.get('size'))}, {att.get('mimeType', '')})")
             continue
         dest = out_dir / fname
         if dest.exists() and not force:
             print(f"  exists     : {fname}")
-            written.append(dest)
-            continue
-        # Rebuild the download URL from the attachment id: the payload's
-        # `content` URL points at the site, which scoped tokens can't
-        # authenticate against (only the api.atlassian.com gateway).
-        att_id = att.get("id", "")
-        content_url = (
-            f"{JIRA_API_BASE_URL}/rest/api/3/attachment/content/{att_id}"
-            if att_id else att.get("content", "")
-        )
-        if not content_url:
-            print(f"  no url     : {fname}")
-            continue
-        resp = requests.get(content_url, auth=get_auth(), timeout=120)
-        resp.raise_for_status()
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(resp.content)
-        print(f"  downloaded : {fname} ({len(resp.content)} bytes)")
+        else:
+            # Rebuild the download URL from the attachment id: the payload's
+            # `content` URL points at the site, which scoped tokens can't
+            # authenticate against (only the api.atlassian.com gateway).
+            att_id = att.get("id", "")
+            content_url = (
+                f"{JIRA_API_BASE_URL}/rest/api/3/attachment/content/{att_id}"
+                if att_id else att.get("content", "")
+            )
+            if not content_url:
+                print(f"  no url     : {fname}")
+                continue
+            resp = requests.get(content_url, auth=get_auth(), timeout=120)
+            resp.raise_for_status()
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(resp.content)
+            print(f"  downloaded : {fname} ({len(resp.content)} bytes)")
         written.append(dest)
+        if unpack and _is_archive(fname):
+            unpack_archive(dest, out_dir / "_unpacked" / _archive_stem(fname), max_unpacked_bytes)
 
     return written
 
@@ -1116,6 +1127,9 @@ def main():
     parser.add_argument("--list-attachments", action="store_true", help="List each issue's attachments without downloading.")
     parser.add_argument("--attachments-ext", type=str, help="Comma-separated extensions to limit attachment downloads (e.g. png,pdf).")
     parser.add_argument("--force", action="store_true", help="Re-download attachments even if the local file already exists.")
+    parser.add_argument("--unpack", action="store_true", help="After download, safely extract zip/tar archives into <KEY>/_unpacked/ (size-capped; .7z is unsupported and stays packed).")
+    parser.add_argument("--max-file-mb", type=int, default=DEFAULT_MAX_FILE_MB, help="Per-file download cap in MB (default 50); larger attachments are skipped.")
+    parser.add_argument("--max-unpacked-mb", type=int, default=DEFAULT_MAX_UNPACKED_MB, help="Per-archive unpacked budget in MB (default 250).")
     parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its markdown to stdout (writes no file). Automated-review comments are omitted unless --include-bot-comments.")
     parser.add_argument("--include-bot-comments", action="store_true", help="Render the reviewer bot's marker comments in full instead of an omission stub. The defect-review skill needs this; ingest must not use it.")
     parser.add_argument("--stamp-hash", action="store_true", help="Compute content_hash for KEY and write it into raw/imports/jira/<KEY>.md.")
@@ -1224,6 +1238,9 @@ def main():
             download_attachments(
                 issue, assets_root,
                 exts=att_exts, list_only=args.list_attachments, force=args.force,
+                max_file_bytes=args.max_file_mb * 1024 * 1024,
+                unpack=args.unpack,
+                max_unpacked_bytes=args.max_unpacked_mb * 1024 * 1024,
             )
             # Attachments-only mode: don't also dump the markdown.
             if not args.export:

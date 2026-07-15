@@ -129,3 +129,47 @@ def test_unpack_tar_skips_symlink_and_traversal(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "link skipped: link.txt" in out
     assert "unsafe path" in out
+
+
+class _FakeResp:
+    def __init__(self, content: bytes):
+        self.content = content
+
+    def raise_for_status(self):
+        pass
+
+
+def _issue(atts):
+    return {"key": "CDS2ASV-1", "fields": {"attachment": atts}}
+
+
+def test_download_skips_oversize(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(jira_utils, "get_auth", lambda: None)
+
+    def no_get(*a, **k):
+        raise AssertionError("must not download an over-cap file")
+
+    monkeypatch.setattr(jira_utils.requests, "get", no_get)
+    att = {"filename": "huge.log", "id": "1", "size": 60 * 1024 * 1024, "mimeType": "text/plain"}
+    written = jira_utils.download_attachments(_issue([att]), tmp_path)
+    assert written == []
+    assert "skip (size)" in capsys.readouterr().out
+
+
+def test_download_unpacks_zip(monkeypatch, tmp_path):
+    monkeypatch.setattr(jira_utils, "get_auth", lambda: None)
+    zip_bytes = (make_zip(tmp_path / "src.zip", [("app.log", b"boom")])).read_bytes()
+    monkeypatch.setattr(jira_utils.requests, "get", lambda *a, **k: _FakeResp(zip_bytes))
+    att = {"filename": "logs.zip", "id": "2", "size": len(zip_bytes), "mimeType": "application/zip"}
+    jira_utils.download_attachments(_issue([att]), tmp_path, unpack=True)
+    assert (tmp_path / "CDS2ASV-1" / "logs.zip").exists()
+    assert (tmp_path / "CDS2ASV-1" / "_unpacked" / "logs" / "app.log").read_bytes() == b"boom"
+
+
+def test_download_without_unpack_leaves_archive_packed(monkeypatch, tmp_path):
+    monkeypatch.setattr(jira_utils, "get_auth", lambda: None)
+    zip_bytes = (make_zip(tmp_path / "src.zip", [("app.log", b"boom")])).read_bytes()
+    monkeypatch.setattr(jira_utils.requests, "get", lambda *a, **k: _FakeResp(zip_bytes))
+    att = {"filename": "logs.zip", "id": "3", "size": len(zip_bytes), "mimeType": "application/zip"}
+    jira_utils.download_attachments(_issue([att]), tmp_path)
+    assert not (tmp_path / "CDS2ASV-1" / "_unpacked").exists()
