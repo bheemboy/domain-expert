@@ -5,9 +5,11 @@ import json
 import hashlib
 import argparse
 import tempfile
+import tarfile
+import zipfile
 import requests
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import config as _config
 
 # ─────────────────────────────────────────────
@@ -700,6 +702,116 @@ def _human_size(num) -> str:
             return f"{num:.0f} {unit}" if unit == "B" else f"{num:.1f} {unit}"
         num /= 1024
     return f"{num:.1f} GB"
+
+
+ARCHIVE_SUFFIXES = (".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tar.xz")
+DEFAULT_MAX_FILE_MB = 50
+DEFAULT_MAX_UNPACKED_MB = 250
+
+
+def _is_archive(fname: str) -> bool:
+    return fname.lower().endswith(ARCHIVE_SUFFIXES)
+
+
+def _archive_stem(fname: str) -> str:
+    low = fname.lower()
+    for suf in ARCHIVE_SUFFIXES:
+        if low.endswith(suf):
+            return fname[: -len(suf)]
+    return fname
+
+
+def _safe_relpath(name: str) -> str | None:
+    """Sanitized relative path for an archive member, or None when the member
+    must be skipped (absolute, drive-qualified, or escaping the root via ..)."""
+    p = PurePosixPath(name.replace("\\", "/"))
+    if p.is_absolute() or any(part == ".." for part in p.parts):
+        return None
+    if p.parts and ":" in p.parts[0]:
+        return None
+    rel = "/".join(part for part in p.parts if part not in ("", "."))
+    return rel or None
+
+
+def unpack_archive(archive: Path, dest_dir: Path, budget_bytes: int) -> list[dict]:
+    """Safely extract a .zip / .tar[.gz|.bz2|.xz] into ``dest_dir``.
+
+    Guards: absolute/``..`` member paths skipped; symlinks and special files
+    skipped; nested archives listed but never extracted (one level only);
+    extraction stops loudly once ``budget_bytes`` of output has been written.
+    Returns the manifest of extracted files: path (relative), size, mtime.
+    """
+    manifest: list[dict] = []
+    written = 0
+
+    def over_budget(declared: int) -> bool:
+        nonlocal written
+        if written + declared > budget_bytes:
+            print(
+                f"  BUDGET EXCEEDED: stopped unpacking {archive.name} at "
+                f"{_human_size(written)} (cap {_human_size(budget_bytes)})"
+            )
+            return True
+        return False
+
+    def emit(rel: str, data: bytes, mtime_iso: str) -> None:
+        nonlocal written
+        out = dest_dir / rel
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(data)
+        written += len(data)
+        manifest.append({"path": rel, "size": len(data), "mtime": mtime_iso})
+
+    if archive.name.lower().endswith(".zip"):
+        with zipfile.ZipFile(archive) as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                rel = _safe_relpath(info.filename)
+                if rel is None:
+                    print(f"  unsafe path: {info.filename} (skipped)")
+                    continue
+                if _is_archive(rel):
+                    print(f"  nested archive: {rel} (not extracted)")
+                    continue
+                if over_budget(info.file_size):
+                    break
+                mtime = (
+                    datetime(*info.date_time).isoformat(sep=" ")
+                    if info.date_time[0] >= 1980 else ""
+                )
+                emit(rel, zf.read(info), mtime)
+    else:
+        with tarfile.open(archive) as tf:
+            for member in tf:
+                if not member.isreg():
+                    if member.issym() or member.islnk():
+                        print(f"  link skipped: {member.name}")
+                    continue
+                rel = _safe_relpath(member.name)
+                if rel is None:
+                    print(f"  unsafe path: {member.name} (skipped)")
+                    continue
+                if _is_archive(rel):
+                    print(f"  nested archive: {rel} (not extracted)")
+                    continue
+                if over_budget(member.size):
+                    break
+                fobj = tf.extractfile(member)
+                if fobj is None:
+                    continue
+                mtime = (
+                    datetime.fromtimestamp(member.mtime).isoformat(sep=" ")
+                    if member.mtime else ""
+                )
+                emit(rel, fobj.read(), mtime)
+
+    for entry in manifest:
+        print(
+            f"  extracted  : {entry['path']} "
+            f"({_human_size(entry['size'])}, {entry['mtime'] or 'no mtime'})"
+        )
+    return manifest
 
 
 def format_attachments(attachments: list, issue_key: str) -> str:
