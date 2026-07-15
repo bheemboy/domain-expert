@@ -210,8 +210,8 @@ omitting empty ones:
   unknown, never as your own judgment.
 - **Evidence** — 3–5 short sentences: observed vs expected,
   versions/config, design facts (attributed per the citation rule),
-  screenshot findings — only facts the disposition rests on that no
-  other section already states.
+  attachment findings (screenshots, PDFs, logs, archive files) — only facts
+  the disposition rests on that no other section already states.
 - **Likely related** — the step 4 sentence, ONLY when step 4 found
   disposition-relevant tickets: one sentence, keys only ("Likely related:
   OLAC-1234, OLAC-4325."); otherwise omit the section entirely.

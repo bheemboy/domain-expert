@@ -127,9 +127,10 @@ lines (stderr) into the run log — they are the audit trail.
 
 Fill `${CLAUDE_PLUGIN_ROOT}/prompts/defect-review-prompt.md`:
 
-- `## Ticket` — the rendered markdown (step 3.1) + one line per screenshot
-  finding. The metadata table's **Reporter** row is the brain's greeting
-  source for ask comments; do not strip it.
+- `## Ticket` — the rendered markdown (step 3.1) + one line per attachment
+  finding (screenshots, PDFs, log excerpts, archive-subagent findings). The
+  metadata table's **Reporter** row is the brain's greeting source for ask
+  comments; do not strip it.
 - `## Wiki grounding` — the retrieved pages (titles + the relevant excerpts).
 - `## Live duplicate candidates` — the step 3.4 list.
 - `## Review state` — `{"question_rounds": <n>, "max_question_rounds": <config>,
