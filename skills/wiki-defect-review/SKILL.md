@@ -84,18 +84,31 @@ lines (stderr) into the run log — they are the audit trail.
    ```bash
    python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --print-md --include-bot-comments
    ```
-2. **Screenshots:** download image attachments and READ each one — the error
-   often lives only there:
+2. **Attachments:** download and unpack everything viewable (the script
+   enforces the caps — 50 MB per file, 250 MB unpacked per archive — and
+   prints a manifest of every extracted file):
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --attachments-ext png,jpg,jpeg,gif --attachments-dir /tmp/defect-review-<KEY>
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --unpack --attachments-ext png,jpg,jpeg,gif,pdf,log,txt,zip,tar,tgz,gz --attachments-dir /tmp/defect-review-<KEY>
    ```
-   Read every downloaded file with the Read tool.
-   Text logs (`.log`, `.txt`) and PDFs: when the manifest shows one at
-   ≤ ~200 KB, download it the same way (adjust `--attachments-ext`) and
-   read it; note bigger ones from the manifest only.
-   Videos and archives (`.zip`, `.7z`, `.tar.*`): NOT viewable — never
-   download or unpack; the comment must disclose each one it could not
-   examine.
+   - **Images:** READ each one — the error often lives only there.
+   - **PDFs:** Read paginated (`pages` arg); first pages plus any page the
+     ticket points at.
+   - **Text logs ≤ 200 KB:** read whole. Bigger: targeted only — grep the
+     ticket's key nouns and error markers; pull only passages relevant to
+     the reported issue; never summarize a whole log.
+   - **Archives (`.zip`, `.tar.*`):** triage from the printed manifest —
+     never read files in unpacked order. Select only files plausibly tied
+     to the reported failure: name match to the ticket's key nouns or
+     component, error/crash logs over routine ones, mtime near the failure
+     time when known. Install/setup logs and config dumps are noise unless
+     the defect is about install/config. Hard budget: at most 5 files per
+     archive. Each selected file goes to a **dedicated subagent** (Agent
+     tool, `general-purpose`): give it the ticket summary, the key nouns,
+     and the file path; it applies the log rules above and returns only
+     relevant excerpts plus a one-line interpretation (≤10 lines). Never
+     read archive contents in the main context.
+   - **`.7z`, videos, other binaries:** not viewable — the comment must
+     disclose each one it could not examine.
 3. **Wiki grounding:** follow the canonical gate in
    `${CLAUDE_PLUGIN_ROOT}/prompts/qmd-first-gate.md` (including its unified
    server-index step 4 when `$WIKI_INDEX_ROOT` is set). Search 2–3 key nouns
@@ -308,6 +321,10 @@ OLAC-7423  assessment        posted                dupe of OLAC-7101
 OLAC-7398  assessment        updated in place      disposition unchanged
 OLAC-7401  assessment        updated + notice      accept-for-fix → duplicate
 ```
+
+Then delete every reviewed ticket's working files —
+`rm -rf /tmp/defect-review-<KEY>*` (downloads, unpacked archives, comment
+and email temp files). Attachments are working files, never kept artifacts.
 
 Server setup (wrapper script, cron, prerequisites, rollout):
 `${CLAUDE_PLUGIN_ROOT}/skills/wiki-defect-review/references/server-setup.md`.

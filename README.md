@@ -135,7 +135,7 @@ The `/wiki-doc-review` command reviews your documented APIs, guides, and other c
 
 The `/wiki-defect-review` command acts as a first-line reviewer on newly
 submitted defects: it reads the ticket (screenshots included; small logs and
-PDFs too — videos and zips are disclosed as unviewed), asks the submitter
+PDFs too — zip/tar archives are unpacked and triaged; videos and .7z are disclosed as unviewed), asks the submitter
 sharply-scoped clarifying questions or troubleshooting steps when the report
 is thin, judges whether the defect belongs to the product, finds duplicates
 in the wiki and in recent Jira, and delivers a structured verdict.

@@ -36,10 +36,11 @@ The sections below are filled in by the calling skill:
 
 ## Your pipeline (in order)
 
-1. **Understand.** Read everything above, including screenshot findings. If a
-   video or archive attachment (`.zip`, `.7z`, `.tar.*`) appears in the
-   manifest, or a log/PDF too large to have been read, you have NOT seen its
-   contents — your comment must disclose each one explicitly.
+1. **Understand.** Read everything above, including screenshot and
+   archive-file findings. If a video or `.7z` attachment appears in the
+   manifest, or a log/PDF/archive file too large — or not selected by
+   triage — to have been read, you have NOT seen its contents — your
+   comment must disclose each one explicitly.
 2. **Sufficiency.** Do the reviewers have what they need to decide a
    disposition? Their decision inputs are: a clear description of the
    issue, its impact on the customer's business, how often it could
