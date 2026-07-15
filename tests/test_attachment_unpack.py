@@ -88,3 +88,44 @@ def test_unpack_stops_at_budget(tmp_path, capsys):
     assert [e["path"] for e in manifest] == ["one.log"]
     assert not (dest / "two.log").exists()
     assert "BUDGET EXCEEDED" in capsys.readouterr().out
+
+
+def make_tar(path: Path, entries, mode: str = "w:gz") -> Path:
+    with tarfile.open(path, mode) as tf:
+        for name, data in entries:
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            info.mtime = 1750000000
+            tf.addfile(info, io.BytesIO(data))
+    return path
+
+
+def test_unpack_tarball(tmp_path):
+    archive = make_tar(tmp_path / "bundle.tar.gz", [("logs/app.log", b"hello")])
+    dest = tmp_path / "out"
+    manifest = jira_utils.unpack_archive(archive, dest, budget_bytes=1024)
+    assert (dest / "logs" / "app.log").read_bytes() == b"hello"
+    assert manifest[0]["path"] == "logs/app.log"
+    assert manifest[0]["mtime"]  # non-empty ISO string
+
+
+def test_unpack_tar_skips_symlink_and_traversal(tmp_path, capsys):
+    path = tmp_path / "evil.tar"
+    with tarfile.open(path, "w") as tf:
+        link = tarfile.TarInfo("link.txt")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "/etc/passwd"
+        tf.addfile(link)
+        bad = tarfile.TarInfo("../escape.txt")
+        bad.size = 1
+        tf.addfile(bad, io.BytesIO(b"x"))
+        ok = tarfile.TarInfo("ok.txt")
+        ok.size = 2
+        tf.addfile(ok, io.BytesIO(b"ok"))
+    dest = tmp_path / "out"
+    manifest = jira_utils.unpack_archive(path, dest, budget_bytes=1024)
+    assert [e["path"] for e in manifest] == ["ok.txt"]
+    assert not (tmp_path / "escape.txt").exists()
+    out = capsys.readouterr().out
+    assert "link skipped: link.txt" in out
+    assert "unsafe path" in out
