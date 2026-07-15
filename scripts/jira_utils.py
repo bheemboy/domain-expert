@@ -905,7 +905,10 @@ def download_attachments(
             print(f"  downloaded : {fname} ({len(resp.content)} bytes)")
         written.append(dest)
         if unpack and _is_archive(fname):
-            unpack_archive(dest, out_dir / "_unpacked" / _archive_stem(fname), max_unpacked_bytes)
+            try:
+                unpack_archive(dest, out_dir / "_unpacked" / _archive_stem(fname), max_unpacked_bytes)
+            except Exception as exc:
+                print(f"  UNPACK FAILED: {fname} ({exc})")
 
     return written
 

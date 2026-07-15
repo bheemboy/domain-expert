@@ -173,3 +173,32 @@ def test_download_without_unpack_leaves_archive_packed(monkeypatch, tmp_path):
     att = {"filename": "logs.zip", "id": "3", "size": len(zip_bytes), "mimeType": "application/zip"}
     jira_utils.download_attachments(_issue([att]), tmp_path)
     assert not (tmp_path / "CDS2ASV-1" / "_unpacked").exists()
+
+
+def test_download_survives_corrupt_archive(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(jira_utils, "get_auth", lambda: None)
+    corrupt = b"PK\x03\x04 this is not a real zip"
+    good_png = b"fake image bytes"
+    responses = {"9": corrupt, "10": good_png}
+
+    def fake_get(url, **kwargs):
+        return _FakeResp(responses[url.rsplit("/", 1)[-1]])
+
+    monkeypatch.setattr(jira_utils.requests, "get", fake_get)
+    atts = [
+        {"filename": "broken.zip", "id": "9", "size": len(corrupt), "mimeType": "application/zip"},
+        {"filename": "shot.png", "id": "10", "size": len(good_png), "mimeType": "image/png"},
+    ]
+    written = jira_utils.download_attachments(_issue(atts), tmp_path, unpack=True)
+    assert [p.name for p in written] == ["broken.zip", "shot.png"]
+    assert "UNPACK FAILED: broken.zip" in capsys.readouterr().out
+
+
+def test_download_survives_member_collision(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(jira_utils, "get_auth", lambda: None)
+    zip_bytes = (make_zip(tmp_path / "src.zip", [("a", b"file"), ("a/b.txt", b"child")])).read_bytes()
+    monkeypatch.setattr(jira_utils.requests, "get", lambda *a, **k: _FakeResp(zip_bytes))
+    att = {"filename": "clash.zip", "id": "11", "size": len(zip_bytes), "mimeType": "application/zip"}
+    written = jira_utils.download_attachments(_issue([att]), tmp_path, unpack=True)
+    assert [p.name for p in written] == ["clash.zip"]
+    assert "UNPACK FAILED: clash.zip" in capsys.readouterr().out

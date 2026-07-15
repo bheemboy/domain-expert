@@ -88,7 +88,7 @@ lines (stderr) into the run log — they are the audit trail.
    enforces the caps — 50 MB per file, 250 MB unpacked per archive — and
    prints a manifest of every extracted file):
    ```bash
-   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --unpack --attachments-ext png,jpg,jpeg,gif,pdf,log,txt,zip,tar,tgz,gz --attachments-dir /tmp/defect-review-<KEY>
+   python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --unpack --attachments-ext png,jpg,jpeg,gif,pdf,log,txt,zip,tar,tgz,gz,bz2,xz --attachments-dir /tmp/defect-review-<KEY>
    ```
    - **Images:** READ each one — the error often lives only there.
    - **PDFs:** Read paginated (`pages` arg); first pages plus any page the
