@@ -6,7 +6,7 @@
     {
       "name": "domain-expert",
       "description": "LLM-maintained wiki for a software project (Jira + code + docs).",
-      "version": "0.21.2",
+      "version": "0.22.0",
       "source": "./",
       "author": { "name": "Sunil Rehman" }
     }
