@@ -56,6 +56,21 @@ def test_unpack_zip_skips_traversal_and_absolute(tmp_path, capsys):
     assert out.count("unsafe path") == 2
 
 
+def test_unpack_zip_skips_symlink_entry(tmp_path, capsys):
+    import stat
+    path = tmp_path / "links.zip"
+    with zipfile.ZipFile(path, "w") as zf:
+        link = zipfile.ZipInfo("link.txt")
+        link.external_attr = (stat.S_IFLNK | 0o777) << 16
+        zf.writestr(link, "/etc/passwd")
+        zf.writestr("ok.txt", b"fine")
+    dest = tmp_path / "out"
+    manifest = jira_utils.unpack_archive(path, dest, budget_bytes=1024)
+    assert [e["path"] for e in manifest] == ["ok.txt"]
+    assert not (dest / "link.txt").exists()
+    assert "link skipped: link.txt" in capsys.readouterr().out
+
+
 def test_unpack_zip_lists_nested_archive_without_extracting(tmp_path, capsys):
     inner = make_zip(tmp_path / "inner.zip", [("deep.log", b"x")])
     archive = make_zip(tmp_path / "outer.zip", [("inner.zip", inner.read_bytes()), ("top.log", b"y")])

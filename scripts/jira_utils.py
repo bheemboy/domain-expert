@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import stat
 import json
 import hashlib
 import argparse
@@ -766,6 +767,10 @@ def unpack_archive(archive: Path, dest_dir: Path, budget_bytes: int) -> list[dic
         with zipfile.ZipFile(archive) as zf:
             for info in zf.infolist():
                 if info.is_dir():
+                    continue
+                mode = (info.external_attr >> 16) & 0xFFFF
+                if stat.S_ISLNK(mode):
+                    print(f"  link skipped: {info.filename}")
                     continue
                 rel = _safe_relpath(info.filename)
                 if rel is None:
