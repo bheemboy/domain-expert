@@ -295,6 +295,20 @@ def test_unpack_nested_guards_apply(tmp_path, capsys):
     assert "link skipped" in out
 
 
+def test_unpack_collision_between_nested_stem_and_sibling_dir(tmp_path, capsys):
+    inner = make_zip(tmp_path / "inner.zip", [("deep.log", b"NESTED")])
+    archive = make_zip(
+        tmp_path / "outer.zip",
+        [("inner/deep.log", b"OUTER"), ("inner.zip", inner.read_bytes())],
+    )
+    dest = tmp_path / "out"
+    manifest = jira_utils.unpack_archive(archive, dest, budget_bytes=10_000)
+    assert "collision  : inner/deep.log (overwritten)" in capsys.readouterr().out
+    # both emits appear in the manifest; the last writer's bytes survive
+    assert [e["path"] for e in manifest] == ["inner/deep.log", "inner/deep.log"]
+    assert (dest / "inner" / "deep.log").read_bytes() == b"NESTED"
+
+
 SKILL_TEXT = Path(__file__).parent.parent / "skills" / "wiki-defect-review" / "SKILL.md"
 EXTRACT_TEXT = Path(__file__).parent.parent / "skills" / "wiki-ingest" / "extract-prompt.md"
 

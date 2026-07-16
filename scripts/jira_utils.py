@@ -743,10 +743,11 @@ def unpack_archive(archive: Path, dest_dir: Path, budget_bytes: int) -> list[dic
     listed, never extracted; a nested archive declared bigger than the whole
     budget stays packed (memory gate — the blob itself is never written to
     disk and never charged, only the members extracted from it are); a
-    malformed nested archive is reported and skipped. Extraction stops
-    loudly once ``budget_bytes`` of output has been written, across all
-    levels. Returns the manifest of extracted files: path (relative to
-    ``dest_dir``), size, mtime.
+    malformed nested archive is reported and skipped; a path collision
+    (e.g. a nested archive's stem matching a sibling directory) overwrites
+    loudly. Extraction stops loudly once ``budget_bytes`` of output has been
+    written, across all levels. Returns the manifest of extracted files:
+    path (relative to ``dest_dir``), size, mtime.
     """
     manifest: list[dict] = []
     written = 0
@@ -766,6 +767,8 @@ def unpack_archive(archive: Path, dest_dir: Path, budget_bytes: int) -> list[dic
     def emit(rel: str, data: bytes, mtime_iso: str) -> None:
         nonlocal written
         out = dest_dir / rel
+        if out.exists():
+            print(f"  collision  : {rel} (overwritten)")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(data)
         written += len(data)
