@@ -352,3 +352,65 @@ def test_critic_checks_site_frequency_and_workaround_acceptability():
     text = " ".join(CRITIC.read_text(encoding="utf-8").split())
     assert "reproducibility" in text
     assert "acceptable" in text
+
+
+# ── silent outcome + strict ask shape locks (0.23.0, 2026-07-15) ────────
+
+def test_prompt_declares_silent_kind():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "kind: ask|assessment|silent" in text
+    assert "leave the section body EMPTY" in text
+
+
+def test_prompt_decision_tree_order_assessment_ask_silent():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "Decide in this order" in text
+    assert (text.index("1. **assessment**") < text.index("2. **ask**")
+            < text.index("3. **silent**"))
+
+
+def test_prompt_significance_test_governs_asks():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "would the disposition differ depending on the answer?" in text
+    assert "upgrade or a clean install" in text  # the canonical fail
+    assert "mechanical backstop, not a target" in text
+
+
+def test_prompt_silent_covers_already_posed_and_unchanged():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "already requested in-thread" in text
+    assert "EMPTY comment thread can never be silent" in text
+    assert "never re-asked" in text
+
+
+def test_prompt_anti_back_and_forth_rules():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "never dribble questions across rounds" in text
+    assert "predictably triggers a follow-up question" in text
+    assert "assessment with stated assumptions over another ask" in text
+
+
+def test_prompt_round_cap_converts_ask_never_silent():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "kind must not be `ask`" in text
+    assert "it never converts silent" in text
+    assert "kind MUST be assessment" not in text
+
+
+def test_prompt_strict_ask_shape():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "AT MOST one status sentence" in text
+    assert "No prose questions" in text
+    assert "Nothing after the last ask" in text
+    assert "short clause inside its ask item" in text
+
+
+def test_prompt_silent_analysis_and_state_contract():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "name what the review is waiting on" in text
+    assert "a silent review is not an ask round" in text
+
+
+def test_prompt_revision_nothing_material_goes_silent():
+    text = " ".join(PROMPT.read_text(encoding="utf-8").split())
+    assert "Nothing material to revise" in text
