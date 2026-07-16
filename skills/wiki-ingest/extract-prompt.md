@@ -32,18 +32,24 @@ ticket — so capture everything business-relevant, and nothing else.
         confidently read), **escalate** per the rule above.
    - **Office (docx/xlsx/pptx)/csv** — download; extract what's feasible, flag the rest.
    - **Archives (`.zip`, `.tar.*`)** — downloaded and unpacked by the fetch
-     command below (size caps enforced by the script: 50 MB per file,
-     250 MB unpacked per archive). Triage from the printed manifest —
-     never read files in unpacked order. Select only files plausibly tied
-     to the item being ingested: name match to its key nouns or component,
-     error/crash logs over routine ones, mtime near the relevant events
-     when known. Install/setup logs and config dumps are noise unless the
-     item is about install/config. Hard budget: at most 5 files per
-     archive. Each selected file goes to a **dedicated subagent** (Agent
-     tool, `general-purpose`): give it the item summary, the key nouns,
-     and the file path; it returns only relevant excerpts plus a one-line
-     interpretation (≤10 lines). Never read archive contents in the main
-     context.
+     command below, one nested level deep (size caps enforced by the
+     script: 50 MB per file, 250 MB unpacked per archive; archives nested
+     deeper stay packed — record each as a media gap). Triage from the
+     printed manifest — never read files in unpacked order. Select only
+     files plausibly tied to the item being ingested: name match to its
+     key nouns or component, error/crash logs over routine ones, mtime
+     near the relevant events when known. Install/setup logs and config
+     dumps are noise unless the item is about install/config.
+     **Scan-then-read:** for a homogeneous report or log set, a subagent
+     may mechanically scan the ENTIRE set (grep, status tallies) to
+     support all-pass or absence claims — scans are not capped. Hard
+     budget: at most 5 files READ into context per archive (each nested
+     archive counts as its own archive); a scan's anomalies get first
+     claim on those reads. Each selected file — or one homogeneous set —
+     goes to a **dedicated subagent** (Agent tool, `general-purpose`):
+     give it the item summary, the key nouns, and the path(s); it returns
+     only relevant excerpts plus a one-line interpretation (≤10 lines).
+     Never read archive contents in the main context.
    - **Video/audio, `.7z`, other large/opaque binaries, installers** — do NOT
      download; record an un-ingested media gap in the import.
    Fetch with `python "${CLAUDE_PLUGIN_ROOT}/scripts/jira_utils.py" <KEY> --attachments --unpack --attachments-dir /tmp/jira-<KEY>`.

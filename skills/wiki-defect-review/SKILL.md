@@ -96,17 +96,26 @@ lines (stderr) into the run log — they are the audit trail.
    - **Text logs ≤ 200 KB:** read whole. Bigger: targeted only — grep the
      ticket's key nouns and error markers; pull only passages relevant to
      the reported issue; never summarize a whole log.
-   - **Archives (`.zip`, `.tar.*`):** triage from the printed manifest —
-     never read files in unpacked order. Select only files plausibly tied
-     to the reported failure: name match to the ticket's key nouns or
-     component, error/crash logs over routine ones, mtime near the failure
-     time when known. Install/setup logs and config dumps are noise unless
-     the defect is about install/config. Hard budget: at most 5 files per
-     archive. Each selected file goes to a **dedicated subagent** (Agent
-     tool, `general-purpose`): give it the ticket summary, the key nouns,
-     and the file path; it applies the log rules above and returns only
-     relevant excerpts plus a one-line interpretation (≤10 lines). Never
-     read archive contents in the main context.
+   - **Archives (`.zip`, `.tar.*`):** unpacked one nested level deep (an
+     archive inside an archive is extracted; anything deeper stays packed
+     and must be disclosed like a `.7z`). Triage from the printed
+     manifest — never read files in unpacked order. Select only files
+     plausibly tied to the reported failure: name match to the ticket's
+     key nouns or component, error/crash logs over routine ones, mtime
+     near the failure time when known. Install/setup logs and config
+     dumps are noise unless the defect is about install/config.
+     **Scan-then-read:** for a homogeneous report or log set, a subagent
+     may mechanically scan the ENTIRE set (grep, status tallies) to
+     support all-pass or absence claims — scans are not capped. Hard
+     budget: at most 5 files READ into context per archive (each nested
+     archive counts as its own archive); a scan's anomalies get first
+     claim on those reads. Each selected file — or one homogeneous set —
+     goes to a **dedicated subagent** (Agent tool, `general-purpose`):
+     give it the ticket summary, the key nouns, and the path(s); it
+     applies the log rules above (scanning the whole set first when one
+     was given) and returns only relevant excerpts plus a one-line
+     interpretation (≤10 lines). Never read archive contents in the main
+     context.
    - **`.7z`, videos, other binaries:** not viewable — the comment must
      disclose each one it could not examine.
 3. **Wiki grounding:** follow the canonical gate in

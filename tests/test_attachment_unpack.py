@@ -293,3 +293,17 @@ def test_unpack_nested_guards_apply(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "unsafe path" in out
     assert "link skipped" in out
+
+
+SKILL_TEXT = Path(__file__).parent.parent / "skills" / "wiki-defect-review" / "SKILL.md"
+EXTRACT_TEXT = Path(__file__).parent.parent / "skills" / "wiki-ingest" / "extract-prompt.md"
+
+
+def test_skill_texts_declare_nested_level_and_scan_then_read():
+    for f in (SKILL_TEXT, EXTRACT_TEXT):
+        text = " ".join(f.read_text(encoding="utf-8").split())
+        assert "one nested level deep" in text, f.name
+        assert "Scan-then-read" in text, f.name
+        assert "scans are not capped" in text, f.name
+        assert "READ into context per archive" in text, f.name
+        assert "counts as its own archive" in text, f.name
