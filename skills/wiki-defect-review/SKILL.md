@@ -161,14 +161,16 @@ the standing assessment unchanged.
   the step 3.1 rendering shows NO comments at all → silence is invalid.
   Re-run the brain ONCE with: "This ticket has no comments, so nothing
   can have been already asked — silent is not available. Output all
-  three sections again with kind ask or assessment." Deliver whatever it
-  returns.
+  three sections again with kind ask or assessment (the round-cap rule
+  still applies)." Then continue the normal pipeline (step 4b onward)
+  with what it returns; never re-run the floor check.
 - Valid silence skips steps 4b (challenge), 5 (contract), 5b (critic),
   and 6 (delivery) entirely — no comment, no email, no Jira write.
 - The ANALYSIS must open by naming what the review is waiting on. Echo
   that line into the run log (auto) or show the ANALYSIS in conversation
-  and state that no comment is warranted (interactive).
-- Go to step 7 and record state exactly as after a delivery, with two
+  and state that no comment is warranted (interactive). In `--dry-run`,
+  print `would stay silent` plus that line.
+- In auto mode, go to step 7 and record state exactly as after a delivery, with two
   substitutions: `--updated` carries the PRIOR `emailed_for_updated`
   (read it with `defect_review_state.py get <KEY>`; omit the flag when
   null — no email went out this round), and the disposition flags carry
@@ -199,7 +201,7 @@ Give it nothing else — its independence is the point.
 - Append the challenges and their resolutions to the ANALYSIS under a
   `Challenge:` heading — audit trail, like the critic's verdict.
 
-## 5. Enforce the contract (mechanical, structure only — never skip)
+## 5. Enforce the contract (mechanical, structure only — never skip for a drafted comment)
 
 Write the COMMENT section to a temp file, then:
 
@@ -220,7 +222,7 @@ Exit 1 → ONE revision pass: re-run the brain with the violations appended
 re-check. Still failing → deliver anyway but append the violations to the
 ANALYSIS (never block the pipeline on style), and say so in the run log.
 
-## 5b. Critic pass (unbiased — never skip)
+## 5b. Critic pass (unbiased — never skip for a drafted comment)
 
 Dispatch a **fresh subagent** (Agent tool, `general-purpose`) whose entire
 prompt is `${CLAUDE_PLUGIN_ROOT}/prompts/defect-review-critic-prompt.md`
@@ -252,9 +254,7 @@ config `mode` exactly as below.
 **`--auto --dry-run`:** print per ticket: key, kind,
 would-`notify`/would-`post`/would-`update` (run `--list-comments` to decide
 post vs update — it is read-only), would-post a disposition-change notice or
-not, and the comment text. For `kind: silent`: print `would stay silent`
-plus the ANALYSIS line naming what the review is waiting on. No delivery,
-no state writes.
+not, and the comment text. No delivery, no state writes.
 
 **`--auto`, `mode: draft`:** email the draft via the notify API:
 
@@ -303,7 +303,8 @@ comment, edited in place.
   <marker> — assessment revised
   Previous assessment revised. "<prior_disposition>" → "<disposition>"
   ```
-  Same code, different wording → no notice; silent in-place edit only.
+  Same code, different wording → no notice; the in-place edit happens
+  without one.
 
 If `also_notify: true`, send the notify email too (same layout, subject
 prefix `[defect-review posted]`).

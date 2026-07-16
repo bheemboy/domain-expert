@@ -160,10 +160,12 @@ def procedure_steps(ask: str) -> list:
 
 def _prose_lines(block: str) -> list:
     """Lines of an ask block that belong to neither the greeting nor a
-    numbered ask. An ask owns its indented sub-lines and any directly
-    attached continuation lines; a blank line followed by an unindented,
-    unnumbered line ends the ask — that text is prose (the "Also: …"
-    loophole). Code-fence contents are never prose."""
+    numbered ask. An ask owns its directly attached continuation lines
+    (no blank line between) and, after a blank line, only its indented
+    sub-step lines; any other line after a blank ends the ask — that text
+    is prose (the "Also: …" loophole). A stray question attached directly
+    under an ask line therefore passes as ask content — the prompt forbids
+    it; this checker tolerates it. Code-fence contents are never prose."""
     prose = []
     in_fence = in_ask = after_blank = seen_greeting = False
     for line in block.split("\n"):

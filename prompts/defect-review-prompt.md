@@ -116,7 +116,8 @@ The sections below are filled in by the calling skill:
    wiki's component/boundary pages (cite them in the ANALYSIS); in the
    comment, state the boundary plainly — readers cannot open the wiki.
    Out of scope → assessment comment naming the likely owning area and
-   where to re-file.
+   where to re-file (unless the standing assessment already says so —
+   that is silent, step 2).
 4. **Duplicates.** Always search: compare against wiki-ingested tickets AND
    the live candidates. In the comment, the entire result is one sentence
    in the reviewers block — `Likely related: KEY-1, KEY-2, KEY-3.` — keys
@@ -135,9 +136,12 @@ The sections below are filled in by the calling skill:
    change the disposition is ask material (step 2) or a Caveats line
    ("worth verifying: …"). Record the challenges and their resolutions
    in the ANALYSIS.
-5. **Disposition.** In scope, sufficient info (or the round cap is reached):
-   produce an **assessment comment**. If the cap forced the proposal, state
-   your assumptions explicitly in Caveats.
+5. **Disposition.** When the step 2 outcome is assessment — in scope,
+   sufficient info (or the round cap forced it): produce an **assessment
+   comment**. If the cap forced the proposal, state your assumptions
+   explicitly in Caveats. When the step 2 outcome is silent, steps 3–5
+   produce no comment: record scope or duplicate observations in the
+   ANALYSIS only.
 
 ## Comment contract (hard rules — a mechanical checker runs after you)
 

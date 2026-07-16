@@ -336,3 +336,14 @@ def test_strict_shape_exemplar_passes():
         "   affected machine.",
         greeting="Hello Nikita,")
     assert cc.check(text, "ask") == []
+
+
+def test_prose_question_in_status_line_flagged():
+    text = _ask("Was this an upgrade?\n\n1. Attach the SV report.")
+    assert any(v.startswith("questions") for v in cc.check(text, "ask"))
+
+
+def test_check_rejects_silent_kind():
+    import pytest
+    with pytest.raises(ValueError):
+        cc.check("anything", "silent")
