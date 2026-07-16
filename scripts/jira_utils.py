@@ -4,6 +4,7 @@ import sys
 import stat
 import json
 import hashlib
+import io
 import argparse
 import tempfile
 import tarfile
@@ -738,20 +739,27 @@ def unpack_archive(archive: Path, dest_dir: Path, budget_bytes: int) -> list[dic
     """Safely extract a .zip / .tar[.gz|.bz2|.xz] into ``dest_dir``.
 
     Guards: absolute/``..`` member paths skipped; symlinks and special files
-    skipped; nested archives listed but never extracted (one level only);
-    extraction stops loudly once ``budget_bytes`` of output has been written.
-    Returns the manifest of extracted files: path (relative), size, mtime.
+    skipped; nested archives extracted ONE level deep — deeper ones are
+    listed, never extracted; a nested archive declared bigger than the whole
+    budget stays packed (memory gate — the blob itself is never written to
+    disk and never charged, only the members extracted from it are); a
+    malformed nested archive is reported and skipped. Extraction stops
+    loudly once ``budget_bytes`` of output has been written, across all
+    levels. Returns the manifest of extracted files: path (relative to
+    ``dest_dir``), size, mtime.
     """
     manifest: list[dict] = []
     written = 0
+    stopped = False
 
     def over_budget(declared: int) -> bool:
-        nonlocal written
+        nonlocal stopped
         if written + declared > budget_bytes:
             print(
                 f"  BUDGET EXCEEDED: stopped unpacking {archive.name} at "
                 f"{_human_size(written)} (cap {_human_size(budget_bytes)})"
             )
+            stopped = True
             return True
         return False
 
@@ -763,53 +771,89 @@ def unpack_archive(archive: Path, dest_dir: Path, budget_bytes: int) -> list[dic
         written += len(data)
         manifest.append({"path": rel, "size": len(data), "mtime": mtime_iso})
 
+    def nested(rel: str, declared: int, blob) -> None:
+        """Archive member met at depth 0. ``blob`` is a thunk so the bytes
+        are read only after the memory gate passes."""
+        if declared > budget_bytes:
+            print(f"  nested archive: {rel} (too large, not extracted)")
+            return
+        print(f"  nested archive: {rel} (extracting)")
+        try:
+            data = blob()
+            if rel.lower().endswith(".zip"):
+                with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                    walk_zip(zf, prefix=_archive_stem(rel) + "/", depth=1)
+            else:
+                with tarfile.open(fileobj=io.BytesIO(data)) as tf:
+                    walk_tar(tf, prefix=_archive_stem(rel) + "/", depth=1)
+        except Exception as exc:
+            print(f"  NESTED UNPACK FAILED: {rel} ({exc})")
+
+    def walk_zip(zf: zipfile.ZipFile, prefix: str, depth: int) -> None:
+        for info in zf.infolist():
+            if stopped:
+                return
+            if info.is_dir():
+                continue
+            mode = (info.external_attr >> 16) & 0xFFFF
+            if stat.S_ISLNK(mode):
+                print(f"  link skipped: {info.filename}")
+                continue
+            rel = _safe_relpath(info.filename)
+            if rel is None:
+                print(f"  unsafe path: {info.filename} (skipped)")
+                continue
+            rel = prefix + rel
+            if _is_archive(rel):
+                if depth:
+                    print(f"  nested archive (depth 2): {rel} (not extracted)")
+                else:
+                    nested(rel, info.file_size, lambda i=info: zf.read(i))
+                continue
+            if over_budget(info.file_size):
+                return
+            mtime = (
+                datetime(*info.date_time).isoformat(sep=" ")
+                if info.date_time[0] >= 1980 else ""
+            )
+            emit(rel, zf.read(info), mtime)
+
+    def walk_tar(tf: tarfile.TarFile, prefix: str, depth: int) -> None:
+        for member in tf:
+            if stopped:
+                return
+            if not member.isreg():
+                if member.issym() or member.islnk():
+                    print(f"  link skipped: {member.name}")
+                continue
+            rel = _safe_relpath(member.name)
+            if rel is None:
+                print(f"  unsafe path: {member.name} (skipped)")
+                continue
+            rel = prefix + rel
+            fobj = tf.extractfile(member)
+            if fobj is None:
+                continue
+            if _is_archive(rel):
+                if depth:
+                    print(f"  nested archive (depth 2): {rel} (not extracted)")
+                else:
+                    nested(rel, member.size, fobj.read)
+                continue
+            if over_budget(member.size):
+                return
+            mtime = (
+                datetime.fromtimestamp(member.mtime).isoformat(sep=" ")
+                if member.mtime else ""
+            )
+            emit(rel, fobj.read(), mtime)
+
     if archive.name.lower().endswith(".zip"):
         with zipfile.ZipFile(archive) as zf:
-            for info in zf.infolist():
-                if info.is_dir():
-                    continue
-                mode = (info.external_attr >> 16) & 0xFFFF
-                if stat.S_ISLNK(mode):
-                    print(f"  link skipped: {info.filename}")
-                    continue
-                rel = _safe_relpath(info.filename)
-                if rel is None:
-                    print(f"  unsafe path: {info.filename} (skipped)")
-                    continue
-                if _is_archive(rel):
-                    print(f"  nested archive: {rel} (not extracted)")
-                    continue
-                if over_budget(info.file_size):
-                    break
-                mtime = (
-                    datetime(*info.date_time).isoformat(sep=" ")
-                    if info.date_time[0] >= 1980 else ""
-                )
-                emit(rel, zf.read(info), mtime)
+            walk_zip(zf, prefix="", depth=0)
     else:
         with tarfile.open(archive) as tf:
-            for member in tf:
-                if not member.isreg():
-                    if member.issym() or member.islnk():
-                        print(f"  link skipped: {member.name}")
-                    continue
-                rel = _safe_relpath(member.name)
-                if rel is None:
-                    print(f"  unsafe path: {member.name} (skipped)")
-                    continue
-                if _is_archive(rel):
-                    print(f"  nested archive: {rel} (not extracted)")
-                    continue
-                if over_budget(member.size):
-                    break
-                fobj = tf.extractfile(member)
-                if fobj is None:
-                    continue
-                mtime = (
-                    datetime.fromtimestamp(member.mtime).isoformat(sep=" ")
-                    if member.mtime else ""
-                )
-                emit(rel, fobj.read(), mtime)
+            walk_tar(tf, prefix="", depth=0)
 
     for entry in manifest:
         print(
@@ -1130,7 +1174,7 @@ def main():
     parser.add_argument("--list-attachments", action="store_true", help="List each issue's attachments without downloading.")
     parser.add_argument("--attachments-ext", type=str, help="Comma-separated extensions to limit attachment downloads (e.g. png,pdf).")
     parser.add_argument("--force", action="store_true", help="Re-download attachments even if the local file already exists.")
-    parser.add_argument("--unpack", action="store_true", help="After download, safely extract zip/tar archives into <KEY>/_unpacked/ (size-capped; .7z is unsupported and stays packed).")
+    parser.add_argument("--unpack", action="store_true", help="After download, safely extract zip/tar archives into <KEY>/_unpacked/ (one nested level deep; size-capped; .7z is unsupported and stays packed).")
     parser.add_argument("--max-file-mb", type=int, default=DEFAULT_MAX_FILE_MB, help="Per-file download cap in MB (default 50); larger attachments are skipped.")
     parser.add_argument("--max-unpacked-mb", type=int, default=DEFAULT_MAX_UNPACKED_MB, help="Per-archive unpacked budget in MB (default 250).")
     parser.add_argument("--print-md", action="store_true", help="Fetch one KEY and print its markdown to stdout (writes no file). Automated-review comments are omitted unless --include-bot-comments.")
