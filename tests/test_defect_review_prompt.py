@@ -414,3 +414,36 @@ def test_prompt_silent_analysis_and_state_contract():
 def test_prompt_revision_nothing_material_goes_silent():
     text = " ".join(PROMPT.read_text(encoding="utf-8").split())
     assert "Nothing material to revise" in text
+
+
+def test_skill_round_cap_no_longer_forces_assessment():
+    text = " ".join(SKILL.read_text(encoding="utf-8").split())
+    assert "kind must not be `ask`" in text
+    assert "kind MUST be `assessment`" not in text
+
+
+def test_skill_silent_branch_skips_pipeline():
+    text = " ".join(SKILL.read_text(encoding="utf-8").split())
+    assert "## 4a. Silent branch" in text
+    assert ("skips steps 4b (challenge), 5 (contract), 5b (critic), and 6 "
+            "(delivery)") in text
+
+
+def test_skill_empty_thread_floor_is_deterministic():
+    text = " ".join(SKILL.read_text(encoding="utf-8").split())
+    assert "Empty-thread floor" in text
+    assert "Re-run the brain ONCE" in text
+    assert "nothing can have been already asked" in text
+
+
+def test_skill_silent_records_state_like_a_delivery():
+    text = " ".join(SKILL.read_text(encoding="utf-8").split())
+    assert "record state exactly as after a delivery" in text
+    assert "PRIOR `emailed_for_updated`" in text
+    assert "keeps the scanner quiet until the next human comment" in text
+
+
+def test_skill_dry_run_and_report_show_silent():
+    text = " ".join(SKILL.read_text(encoding="utf-8").split())
+    assert "would stay silent" in text
+    assert "waiting on round-1 asks" in text  # the report example line

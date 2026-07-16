@@ -139,14 +139,43 @@ Fill `${CLAUDE_PLUGIN_ROOT}/prompts/defect-review-prompt.md`:
   "prior_disposition": <from the scan JSON, null when absent>}`.
 
 Parse the three output sections: `### COMMENT (kind: …)`, `### ANALYSIS`,
-`### STATE`. The brain writes the comment body only — the typed header
+`### STATE`. Kind is `ask`, `assessment`, or `silent` (empty COMMENT body
+— step 4a). The brain writes the comment body only — the typed header
 (`<marker> — <label>`) is composed mechanically in step 5.
 
 **Round-cap rule:** when `question_rounds >= max_question_rounds` AND
-`prior_disposition_code` is null, instruct the brain that kind MUST be
-`assessment` (verdict with stated assumptions). After an assessment has
-been delivered the cap no longer applies — the brain's consequential-only
-bar governs any further ask.
+`prior_disposition_code` is null, instruct the brain that kind must not
+be `ask` — an assessment with stated assumptions, or silent when every
+consequential input is already posed in-thread. After an assessment has
+been delivered the cap no longer applies — the brain's significance test
+governs any further ask.
+
+## 4a. Silent branch (kind: silent — never skip the floor check)
+
+The brain stays silent when nothing significant and new moves the ticket
+toward a disposition: the thread is waiting on an already-posed ask, the
+newest activity is an operator or courtesy comment, or a reply leaves
+the standing assessment unchanged.
+
+- **Empty-thread floor (deterministic — never trust the brain on this):**
+  the step 3.1 rendering shows NO comments at all → silence is invalid.
+  Re-run the brain ONCE with: "This ticket has no comments, so nothing
+  can have been already asked — silent is not available. Output all
+  three sections again with kind ask or assessment." Deliver whatever it
+  returns.
+- Valid silence skips steps 4b (challenge), 5 (contract), 5b (critic),
+  and 6 (delivery) entirely — no comment, no email, no Jira write.
+- The ANALYSIS must open by naming what the review is waiting on. Echo
+  that line into the run log (auto) or show the ANALYSIS in conversation
+  and state that no comment is warranted (interactive).
+- Go to step 7 and record state exactly as after a delivery, with two
+  substitutions: `--updated` carries the PRIOR `emailed_for_updated`
+  (read it with `defect_review_state.py get <KEY>`; omit the flag when
+  null — no email went out this round), and the disposition flags carry
+  the scan JSON's prior values forward (omit both when null), as for an
+  ask. `--last-human-comment` from the scan JSON is what keeps the
+  scanner quiet until the next human comment. With `--dry-run`, write no
+  state (as always).
 
 ## 4b. Challenge pass (assessments only — never skip)
 
@@ -223,7 +252,9 @@ config `mode` exactly as below.
 **`--auto --dry-run`:** print per ticket: key, kind,
 would-`notify`/would-`post`/would-`update` (run `--list-comments` to decide
 post vs update — it is read-only), would-post a disposition-change notice or
-not, and the comment text. No delivery, no state writes.
+not, and the comment text. For `kind: silent`: print `would stay silent`
+plus the ANALYSIS line naming what the review is waiting on. No delivery,
+no state writes.
 
 **`--auto`, `mode: draft`:** email the draft via the notify API:
 
@@ -296,7 +327,7 @@ on the ticket, and skipping state would both block the retry
 (bot-spoke-last hides the ticket) and desync rounds/disposition from
 reality. Report the secondary failure and exit non-zero.
 
-## 7. Record state (auto mode only, after successful delivery)
+## 7. Record state (auto mode only, after successful delivery or a valid silent review)
 
 ```bash
 python "${CLAUDE_PLUGIN_ROOT}/scripts/defect_review_state.py" record <KEY> \
@@ -321,6 +352,7 @@ OLAC-7411  ask (round 2/3)   emailed rehman@…      2 pending asks
 OLAC-7423  assessment        posted                dupe of OLAC-7101
 OLAC-7398  assessment        updated in place      disposition unchanged
 OLAC-7401  assessment        updated + notice      accept-for-fix → duplicate
+OLAC-7415  silent            no action             waiting on round-1 asks
 ```
 
 Then delete every reviewed ticket's working files —
