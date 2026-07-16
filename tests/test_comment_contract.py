@@ -284,3 +284,55 @@ def test_check_honors_custom_marker():
     custom = "[bot-review]"
     text = f"{custom}\n---\n\nHello Martin,\n\n1. Which version: 2.7 or 2.8?"
     assert cc.check(text, "ask", marker=custom) == []
+
+
+# ── strict ask shape (0.23.0) ───────────────────────────────────────────
+
+def test_ask_with_zero_numbered_asks_flagged():
+    text = _ask("Could you tell us more about the impact?")
+    assert any(v.startswith("asks") for v in cc.check(text, "ask"))
+
+
+def test_prose_question_after_asks_flagged():
+    # The motivating loophole: an "Also: …" question smuggled after the
+    # numbered asks must be a violation.
+    text = _ask("Status.\n\n1. Attach the SV report.\n\n"
+                "Also: was this an upgrade or a clean install?")
+    assert any(v.startswith("questions") for v in cc.check(text, "ask"))
+
+
+def test_question_marks_inside_numbered_asks_pass():
+    text = _ask("Status.\n\n1. Which version: 2.7 or 2.8?\n"
+                "2. Is the workaround acceptable to the lab?")
+    assert cc.check(text, "ask") == []
+
+
+def test_question_mark_inside_code_fence_passes():
+    text = _ask("Status.\n\n1. Run this and reply with the output:\n"
+                "```\nquery? --verbose\n```")
+    assert cc.check(text, "ask") == []
+
+
+def test_prose_outside_asks_word_budget_flagged():
+    filler = "word " * 40
+    text = _ask(f"{filler}\n\n1. Attach the SV report.")
+    assert any(v.startswith("prose") for v in cc.check(text, "ask"))
+
+
+def test_greeting_and_status_sentence_exempt_within_budget():
+    text = _ask("Thanks for the report. Two things would help us "
+                "disposition this:\n\n1. Attach the SV report.")
+    assert cc.check(text, "ask") == []
+
+
+def test_strict_shape_exemplar_passes():
+    # The target shape from the 2026-07-15 spec, verbatim.
+    text = _ask(
+        "Thanks for the report. Two things would help us disposition this:\n\n"
+        "1. The per-product Software Verification report (PDF/HTML from the\n"
+        "   Reports panel, or pasted text) showing the failing product, file,\n"
+        "   and error type. The Home page shows only the aggregate.\n"
+        "2. The report from the standalone SVT tool (Start menu) on one\n"
+        "   affected machine.",
+        greeting="Hello Nikita,")
+    assert cc.check(text, "ask") == []

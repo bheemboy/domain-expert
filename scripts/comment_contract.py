@@ -4,9 +4,12 @@ The LLM drafts; this module verifies. Prompts drift, so budgets and structure
 are never left to the prompt alone. Two kinds:
 
   ask        — conversational: ONE block greeting the addressee (reporter or
-               any thread participant); ≤3 numbered asks (contiguous 1..N);
-               ≤1 procedure of ≤5 sub-steps whose last step is a report-back
-               line; ~150 words (~300 with a procedure).
+               any thread participant); 1–3 numbered asks (contiguous 1..N);
+               every '?' lives inside a numbered ask; prose outside the asks
+               (greeting exempt) ≤30 words; ≤1 procedure of ≤5 sub-steps
+               whose last step is a report-back line; ~150 words (~300 with
+               a procedure). kind 'silent' exists upstream but never
+               reaches this checker — nothing is drafted for it.
   assessment — team-facing: exactly one reviewers block, enough to decide a
                disposition and nothing else (no developer block); a
                '**Proposed disposition**' line is required and must be the
@@ -34,6 +37,7 @@ ASK_PROC_WORDS = 330     # 300 + 10% grace
 ASSESS_WORDS = 275       # 250 + 10% grace
 MAX_ASKS = 3
 MAX_PROC_STEPS = 5
+ASK_PROSE_WORDS = 33     # 30 + 10% grace — prose outside the numbered asks
 DEFAULT_MARKER = "🤖 Automated defect review"
 
 # Comment-type labels, appended to the marker as `<marker> — <label>`. The
@@ -154,6 +158,41 @@ def procedure_steps(ask: str) -> list:
     return [ln for ln in ask.split("\n") if _SUBSTEP_RE.match(ln)]
 
 
+def _prose_lines(block: str) -> list:
+    """Lines of an ask block that belong to neither the greeting nor a
+    numbered ask. An ask owns its indented sub-lines and any directly
+    attached continuation lines; a blank line followed by an unindented,
+    unnumbered line ends the ask — that text is prose (the "Also: …"
+    loophole). Code-fence contents are never prose."""
+    prose = []
+    in_fence = in_ask = after_blank = seen_greeting = False
+    for line in block.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if not stripped:
+            after_blank = True
+            continue
+        if not seen_greeting and _HELLO_RE.match(stripped):
+            seen_greeting = True
+            after_blank = False
+            continue
+        if _ASK_LINE_RE.match(line):
+            in_ask = True
+            after_blank = False
+            continue
+        if in_ask and (_SUBSTEP_RE.match(line) or not after_blank):
+            after_blank = False
+            continue
+        in_ask = False
+        after_blank = False
+        prose.append(line)
+    return prose
+
+
 def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
     """Return violations (empty list = compliant). kind: 'ask' | 'assessment'."""
     if kind not in ("ask", "assessment"):
@@ -222,6 +261,21 @@ def check(text: str, kind: str, marker: str = DEFAULT_MARKER) -> list:
         violations.append(
             f"numbering: asks numbered {nums}, expected "
             f"{list(range(1, len(nums) + 1))} — renumber contiguously from 1")
+    if not asks:
+        violations.append(
+            "asks: an ask comment must contain at least one numbered ask "
+            "(1. …) — a question hidden in prose does not count")
+    prose = _prose_lines(blocks[0]) if blocks else []
+    if any("?" in ln for ln in prose):
+        violations.append(
+            "questions: a '?' appears outside the numbered asks — every "
+            "question must be a numbered ask (no prose questions, no "
+            "'Also: …' lines)")
+    prose_wc = word_count("\n".join(prose))
+    if prose_wc > ASK_PROSE_WORDS:
+        violations.append(
+            f"prose: {prose_wc} words outside the numbered asks exceed the "
+            f"ceiling {ASK_PROSE_WORDS} — context belongs inside its ask item")
     procedures = [a for a in asks if len(procedure_steps(a)) >= 2]
     if len(procedures) > 1:
         violations.append(
