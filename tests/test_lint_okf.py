@@ -117,3 +117,18 @@ def test_description_long_is_warning_not_issue(tmp_path):
     text = {p: p.read_text(encoding="utf-8") for p in pages}
     warns = lint_wiki._description_length_warns(pages, text)
     assert any("description-long" in w and "entities/a.md" in w for w in warns)
+
+
+def test_page_oversized_is_warning_not_issue(tmp_path):
+    # A content page past the read window warns (never a hard issue); log is exempt.
+    big = _page() + ("filler paragraph. " * 4000)  # > PAGE_SIZE_WARN_CHARS (60k)
+    wiki = _wiki(tmp_path, _linked({"entities/a.md": big}))
+    assert len(big) > lint_wiki.PAGE_SIZE_WARN_CHARS
+    assert not any("page-oversized" in i for i in lint_wiki.lint(wiki))
+
+    (wiki / "log.md").write_text("# Log\n" + ("x" * 70000), encoding="utf-8")
+    pages = sorted(wiki.rglob("*.md"))
+    text = {p: p.read_text(encoding="utf-8") for p in pages}
+    warns = lint_wiki._oversized_page_warns(pages, text)
+    assert any("page-oversized" in w and "entities/a.md" in w for w in warns)
+    assert not any("log.md" in w for w in warns)  # append-only reserved file exempt

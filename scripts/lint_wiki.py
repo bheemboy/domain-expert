@@ -42,7 +42,9 @@ Semantic checks (contradictions, missed supersessions, concept-splits) are NOT
 done here — those need the Opus semantic-lint subagent.
 
 It also warns (advisory) on over-long `description:` values (description-long),
-since the catalog renders them verbatim and they should stay one-liners.
+since the catalog renders them verbatim and they should stay one-liners, and on
+oversized pages (page-oversized) that exceed the Q&A app's single-read window and
+should be split into focused pages (log/index exempt).
 
 Exit code is non-zero if any hard *issue* is found (warnings excluded), so the
 synth gate / CI can branch on it. No model calls; deterministic (pyyaml for
@@ -72,6 +74,10 @@ ENTRY_PAGES = {"index", "log", "overview"}
 FRONTMATTER_EXEMPT = {"index", "log"}
 REQUIRED_FRONTMATTER = ("title", "description", "type", "status", "updated")
 DESCRIPTION_WARN_CHARS = 300
+# Matches the Q&A app's single-read window: a page past this is served to the
+# model in multiple windows and is a split candidate. Kept in sync by intent, not
+# import (the app lives in a separate repo).
+PAGE_SIZE_WARN_CHARS = 60_000
 
 _WIKILINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---", re.DOTALL)
@@ -296,6 +302,26 @@ def _description_length_warns(pages, page_text) -> list[str]:
     return warns
 
 
+def _oversized_page_warns(pages, page_text) -> list[str]:
+    """WARN-level: a content page larger than the reader's single-read window.
+
+    The Q&A app serves a page to the model in ``PAGE_SIZE_WARN_CHARS``-sized
+    windows, so a page past that is read in several passes and is a candidate to
+    split into focused pages. The append-only reserved files (index, log) are
+    exempt — log.md grows without bound by design and is reached via grep, never
+    a full read. A cleanup signal, not a gate, so it never affects the exit code."""
+    warns: list[str] = []
+    for p in pages:
+        if _slug(p) in FRONTMATTER_EXEMPT:
+            continue
+        n = len(page_text[p])
+        if n > PAGE_SIZE_WARN_CHARS:
+            warns.append(
+                f"page-oversized: {p} ({n:,} chars > {PAGE_SIZE_WARN_CHARS:,}) — "
+                f"exceeds the reader's single-read window; split into focused pages")
+    return warns
+
+
 def _content_pages() -> list[Path]:
     return sorted(p for p in WIKI.rglob("*.md"))
 
@@ -416,6 +442,7 @@ def main() -> int:
     if "--no-context-check" not in sys.argv:
         warns += _context_dependent_refs(pages, page_text)
     warns += _description_length_warns(pages, page_text)
+    warns += _oversized_page_warns(pages, page_text)
 
     # Report.
     if not issues:

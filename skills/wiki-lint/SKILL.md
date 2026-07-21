@@ -15,8 +15,9 @@ orphan pages, duplicate slugs, `index.md` catalog drift (exact, against
 `type`, `status`, `updated`), title↔H1 mismatch, malformed descriptions. Exit 0 =
 clean, non-zero = issues (printed). This is cheap — safe to run often and forward.
 It also emits advisory `WARN` lines (`context-ref-leak`, `supersession-leak`,
-`description-long`) that never affect the exit code — the first two are candidate
-lists for semantic passes 5 and 3 below. Fix `index-drift` by running
+`description-long`, `page-oversized`) that never affect the exit code — the first
+two are candidate lists for semantic passes 5 and 3 below; `page-oversized` flags
+a page past the Q&A app's single-read window as a split candidate (log/index exempt). Fix `index-drift` by running
 `python "${CLAUDE_PLUGIN_ROOT}/scripts/build_index.py" --write`, never by editing
 the catalog region.
 
